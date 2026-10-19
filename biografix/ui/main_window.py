@@ -52,7 +52,9 @@ RESOURCES = os.path.join(PROJECT_ROOT, "biografix", "resources")
 DEMO_IMAGES = [os.path.join(RESOURCES, name) for name in ("portrait.png", "fingerprint.png")]
 
 # "More" tab: one group of tiles per course assignment
-TASKS = []
+TASKS = [
+    ("Task 1 – Thresholding", ["bin.manual", "bin.niblack", "bin.sauvola", "bin.phansalkar", "bin.otsu"]),
+]
 
 
 TOOL_WINDOWS = [

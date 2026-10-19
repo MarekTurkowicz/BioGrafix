@@ -15,6 +15,7 @@ morfologia, histogramy, modele kolorów i figury wektorowe, wszystko na jednym p
 - Liczenie w tle z licznikiem czasu i możliwością przerwania.
 - Obszar obrazu: operacja działa tylko w zaznaczonym fragmencie.
 - Rysowanie: linie, prostokąty i okręgi (Bresenham), wielokąty, krzywe Béziera.
+- Zakładka **Więcej**: metody z danego zadania w jednym miejscu.
 - Interfejs po polsku i po angielsku (Widok → Język).
 
 ## Algorytmy
@@ -24,7 +25,7 @@ morfologia, histogramy, modele kolorów i figury wektorowe, wszystko na jednym p
 | Operacje punktowe | dodawanie / mnożenie / dzielenie, jasność, Levels, rozjaśnij / przyciemnij, 5 metod skali szarości, wypełnij kolorem |
 | Histogram | histogram jasności i RGB, rozciąganie i wyrównywanie (jasność / każdy kanał) |
 | Filtry | uśredniający, Gauss 5×5, medianowy, Sobel (moduł), wyostrzający, własna maska, maski gotowe (Prewitt, Sobel, Laplace, narożniki) |
-| Binaryzacja | ręczna, Otsu, Percent Black, Mean Iterative Selection, entropia (Kapur) |
+| Binaryzacja | ręczna, Otsu, Percent Black, Mean Iterative Selection, entropia (Kapur), **Niblack, Sauvola, Phansalkar** |
 | Morfologia | dylatacja, erozja, otwarcie, domknięcie, hit-or-miss (ścienianie / pogrubianie) |
 | Segmentacja | usuwanie tła (rembg) |
 | Analiza | procent pokrycia kolorem (HSV) |

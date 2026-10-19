@@ -2,13 +2,14 @@
 
 - Pixel-list methods (manual, Percent Black, Mean Iterative, Kapur entropy)
   use luminance; values below T become black.
-- numpy methods (manual, Otsu) use the channel average (R+G+B)/3; values
-  above T become white.
+- numpy methods (manual, Otsu, Niblack, Sauvola, Phansalkar) use the channel
+  average (R+G+B)/3; values above T become white.
 """
 
 import math
 
 import numpy as np
+from scipy.ndimage import uniform_filter
 
 
 # ============================================================ pixel lists ==
@@ -208,3 +209,43 @@ def otsu_threshold(image: np.ndarray) -> np.ndarray:
     """Threshold with Otsu's method."""
     grayscale = _gray_average(image)
     return apply_threshold(grayscale, otsu_threshold_value(grayscale))
+
+
+def local_mean_std(gray: np.ndarray, window_size: int):
+    """Local mean ``m`` and standard deviation ``s`` in a square window.
+
+    Uses s² = E[x²] − E[x]²; the input is converted to float so squares do not overflow.
+    """
+    gray = np.asarray(gray, dtype=np.float64)
+    mean = uniform_filter(gray, size=window_size, mode="reflect")
+    squared_mean = uniform_filter(gray ** 2, size=window_size, mode="reflect")
+    std_dev = np.sqrt(np.maximum(squared_mean - mean ** 2, 0))
+    return mean, std_dev
+
+
+def niblack_threshold(image: np.ndarray, window_size: int = 15, k: float = -0.2) -> np.ndarray:
+    """Niblack local threshold: T = m + k·s."""
+    gray = _gray_average(image).astype(np.float64)
+    mean, std_dev = local_mean_std(gray, window_size)
+    threshold = mean + k * std_dev
+    return apply_threshold(gray, threshold)
+
+
+def sauvola_threshold(image: np.ndarray, window_size: int = 15, k: float = 0.2, R: float = 128.0) -> np.ndarray:
+    """Sauvola local threshold: T = m · (1 + k·(s/R − 1))."""
+    gray = _gray_average(image).astype(np.float64)
+    mean, std_dev = local_mean_std(gray, window_size)
+    threshold = mean * (1 + k * (std_dev / R - 1))
+    return apply_threshold(gray, threshold)
+
+
+def phansalkar_threshold(image: np.ndarray, window_size: int = 15, k: float = 0.25,
+                         p: float = 2.0, q: float = 10.0, R: float = 0.5) -> np.ndarray:
+    """Phansalkar local threshold: T = m · (1 + p·exp(−q·m) + k·(s/R − 1)).
+
+    Computed on the image normalised to [0, 1], hence R = 0.5.
+    """
+    gray = _gray_average(image).astype(np.float64) / 255.0
+    mean, std_dev = local_mean_std(gray, window_size)
+    threshold = mean * (1 + p * np.exp(-q * mean) + k * (std_dev / R - 1))
+    return apply_threshold(gray, threshold)

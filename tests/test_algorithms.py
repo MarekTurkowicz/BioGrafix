@@ -45,6 +45,25 @@ class TestThresholding(unittest.TestCase):
         out = thresholding.otsu_threshold(img)
         self.assertTrue((out[:, :5] == 0).all() and (out[:, 5:] == 255).all())
 
+    def test_local_methods_handle_uneven_lighting(self):
+        # ridge-like stripes on a background with a lighting gradient
+        h, w = 60, 120
+        bg = np.tile(np.linspace(60, 230, w), (h, 1))
+        stripes = (np.sin(np.arange(w) / 3.0) > 0.3)[None, :].repeat(h, 0)
+        gray = np.where(stripes, bg * 0.55, bg)
+        img = np.stack([gray] * 3, -1).astype(np.uint8)
+        truth = ~stripes
+        for fn in (thresholding.niblack_threshold, thresholding.sauvola_threshold, thresholding.phansalkar_threshold):
+            with self.subTest(fn=fn.__name__):
+                acc = ((fn(img)[:, :, 0] == 255) == truth).mean()
+                self.assertGreater(acc, 0.95)
+
+    def test_local_mean_std_no_uint8_overflow(self):
+        gray = np.full((20, 20), 200, np.uint8)
+        m, s = thresholding.local_mean_std(gray, 5)
+        self.assertTrue(np.allclose(m, 200))
+        self.assertTrue(np.allclose(s, 0))
+
 
 class TestGeometry(unittest.TestCase):
     def test_bresenham_endpoints(self):

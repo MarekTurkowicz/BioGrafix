@@ -15,6 +15,7 @@ morphology, histograms, colour models and vector shapes, all on one canvas.
 - Background processing with a live timer and cancel.
 - Region of interest: run any operation on a selected area only.
 - Drawing tools: Bresenham lines, rectangles and circles, polygons, Bézier curves.
+- **More** tab with the methods of each assignment in one place.
 - English and Polish interface (View → Language).
 
 ## Algorithms
@@ -24,7 +25,7 @@ morphology, histograms, colour models and vector shapes, all on one canvas.
 | Point operations | add / multiply / divide, brightness, levels, lighten / darken, 5 grayscale methods, fill with colour |
 | Histogram | luminance and RGB histograms, stretching and equalisation (luminance / per channel) |
 | Filters | box blur, Gaussian 5×5, median, Sobel magnitude, sharpen, custom kernel, preset kernels (Prewitt, Sobel, Laplace, corners) |
-| Thresholding | manual, Otsu, Percent Black, Mean Iterative Selection, entropy (Kapur) |
+| Thresholding | manual, Otsu, Percent Black, Mean Iterative Selection, entropy (Kapur), **Niblack, Sauvola, Phansalkar** |
 | Morphology | dilation, erosion, opening, closing, hit-or-miss (thinning / thickening) |
 | Segmentation | background removal (rembg) |
 | Analysis | colour coverage in HSV |
