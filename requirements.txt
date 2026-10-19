@@ -1,0 +1,8 @@
+# Python >= 3.12 (tested on 3.14)
+PySide6==6.12.0
+numpy==2.5.4
+pillow==12.3.0        # rembg 2.0.85 requires pillow<13
+matplotlib==3.11.2
+scipy==1.18.1
+rembg==2.0.85
+onnxruntime==1.31.0
