@@ -84,5 +84,5 @@ background execution and undo step are generated from that declaration.
 
 ## Credits
 
-Demo portrait: photo by [Christopher Campbell](https://unsplash.com/photos/3hoAon9Mc88) (CC0).
+Demo portrait: photo by [Rachael Crowe](https://unsplash.com/photos/tqar8J3fZ3o) (CC0), colour-toned.
 The demo fingerprint is synthetic.

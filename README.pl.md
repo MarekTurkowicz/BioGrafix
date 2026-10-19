@@ -84,5 +84,5 @@ liczenie w tle i krok w historii powstają na podstawie tej deklaracji.
 
 ## Źródła
 
-Portret demo: zdjęcie [Christopher Campbell](https://unsplash.com/photos/3hoAon9Mc88) (CC0).
+Portret demo: zdjęcie [Rachael Crowe](https://unsplash.com/photos/tqar8J3fZ3o) (CC0), z dodanym tonowaniem kolorów.
 Odcisk palca demo jest wygenerowany syntetycznie.
