@@ -5,7 +5,6 @@ from .dilate import dilate
 from .erode import erode
 from .hit_or_miss import hit_or_miss
 
-
 MODES = ("dilate", "erode", "open", "close", "thin", "thicken")
 
 

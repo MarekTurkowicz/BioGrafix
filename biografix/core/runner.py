@@ -11,7 +11,8 @@ from __future__ import annotations
 
 import time
 import traceback
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 from PySide6.QtCore import QObject, QThread, Signal
@@ -56,16 +57,16 @@ class OperationRunner(QObject):
         super().__init__(parent)
         self.doc = doc
         self.synchronous = synchronous    # run in the calling thread (tests)
-        self._worker: Optional[_Worker] = None
-        self._job: Optional[dict] = None
-        self._abandoned: List[_Worker] = []   # cancelled workers that are still running
+        self._worker: _Worker | None = None
+        self._job: dict | None = None
+        self._abandoned: list[_Worker] = []   # cancelled workers that are still running
 
     @property
     def busy(self) -> bool:
         return self._worker is not None
 
     @property
-    def busy_oid(self) -> Optional[str]:
+    def busy_oid(self) -> str | None:
         """Id of the image being processed, or None."""
         return self._job["oid"] if self._job and self._worker is not None else None
 
@@ -81,7 +82,7 @@ class OperationRunner(QObject):
         immediately.
         """
         worker = self._worker
-        if worker is None:
+        if worker is None or self._job is None:
             return
         label = self._job["label"]
         worker.done.disconnect(self._on_done)
@@ -100,7 +101,7 @@ class OperationRunner(QObject):
             w.wait()
 
     # --------------------------------------------------------------- start --
-    def run(self, op: Operation, values: Dict[str, Any]) -> None:
+    def run(self, op: Operation, values: dict[str, Any]) -> None:
         if op.target == TARGET_SHAPE:
             self._run_on_shape(op, values)
         else:
@@ -201,7 +202,7 @@ class OperationRunner(QObject):
                 self.figure.emit(item, tr(op.label))
 
 
-def _as_list(result) -> List[Any]:
+def _as_list(result) -> list[Any]:
     if result is None:
         return []
     if isinstance(result, (list, tuple)):

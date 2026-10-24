@@ -18,7 +18,7 @@ def parse_structuring_element(raw: str):
         except ValueError:
             raise ValueError(
                 "The structuring element may contain only integers (0, 1 and optionally -1)."
-            )
+            ) from None
         if width is None:
             width = len(row)
         elif len(row) != width:

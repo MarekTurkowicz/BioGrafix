@@ -4,12 +4,12 @@ A point (x, y) is the vector [x, y, 1]^T multiplied by a 3×3 matrix.
 """
 
 import math
-from typing import List, Sequence
+from collections.abc import Sequence
 
 from ._common import Matrix3, Point
 
 
-def apply_matrix(points: Sequence[Point], M: Matrix3) -> List[Point]:
+def apply_matrix(points: Sequence[Point], M: Matrix3) -> list[Point]:
     """Return the points transformed by a 3×3 matrix."""
     res = []
     for x, y in points:

@@ -11,7 +11,6 @@ import glob
 import os
 import platform
 import sys
-from typing import List, Optional
 
 from PySide6.QtCore import QUrl
 from PySide6.QtWidgets import QFileDialog, QWidget
@@ -21,7 +20,7 @@ def is_wsl() -> bool:
     return sys.platform.startswith("linux") and "microsoft" in platform.release().lower()
 
 
-def _windows_home() -> Optional[str]:
+def _windows_home() -> str | None:
     """The Windows user directory as seen from WSL, e.g. ``/mnt/c/Users/name``."""
     here = os.path.abspath(__file__)
     if here.startswith("/mnt/c/Users/"):
@@ -32,7 +31,7 @@ def _windows_home() -> Optional[str]:
     return users[0] if len(users) == 1 else None
 
 
-def _sidebar() -> List[QUrl]:
+def _sidebar() -> list[QUrl]:
     places = []
     home = _windows_home()
     if home:
@@ -55,7 +54,7 @@ def _dialog(parent, title, directory, filter_, mode, accept) -> QFileDialog:
     return dlg
 
 
-def open_files(parent: QWidget, title: str, directory: str, filter_: str) -> List[str]:
+def open_files(parent: QWidget, title: str, directory: str, filter_: str) -> list[str]:
     if not is_wsl():
         return QFileDialog.getOpenFileNames(parent, title, directory, filter_)[0]
     dlg = _dialog(parent, title, directory, filter_, QFileDialog.FileMode.ExistingFiles, QFileDialog.AcceptMode.AcceptOpen)

@@ -6,5 +6,5 @@
 
 from ._common import _luma  # noqa: F401
 from .compute import compute_histogram  # noqa: F401
+from .equalize import equalize_histogram_rgb, histogram_equalize  # noqa: F401
 from .stretch import histogram_stretch, stretch_histogram_rgb  # noqa: F401
-from .equalize import histogram_equalize, equalize_histogram_rgb  # noqa: F401

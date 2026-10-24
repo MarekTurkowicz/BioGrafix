@@ -9,7 +9,7 @@ from __future__ import annotations
 import colorsys
 import math
 
-from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import QGridLayout, QGroupBox, QHBoxLayout, QLabel, QSlider, QVBoxLayout, QWidget
 
@@ -25,7 +25,7 @@ class _Canvas(QWidget):
     def __init__(self, size: int):
         super().__init__()
         self.setFixedSize(size, size)
-        self.rects = []      # (x1, y1, x2, y2, QColor)
+        self.rects: list[tuple] = []  # (x1, y1, x2, y2, QColor)
         self.outline = None  # ("rect"|"ellipse", QRectF)
 
     def paintEvent(self, event):
@@ -60,7 +60,7 @@ class _Projection3DWindow(QWidget):
         for key, value in config.items():  # subclass configuration: sizes and sampling density
             setattr(self, key, value)
         self.setWindowTitle(tr(title))
-        self._points = []  # (sx, sy, cross-section data)
+        self._points: list[tuple] = []  # (sx, sy, cross-section data)
 
         main = QHBoxLayout(self)
         left = QVBoxLayout()
@@ -102,7 +102,7 @@ class _Projection3DWindow(QWidget):
         voxels, size_pt = self.build_voxels()
         voxels.sort(key=lambda t: t[0])  # painter's algorithm: far to near
         rects, self._points = [], []
-        for zr, sx, sy, data, color in voxels:
+        for _zr, sx, sy, data, color in voxels:
             rects.append((sx - size_pt / 2, sy - size_pt / 2, sx + size_pt / 2, sy + size_pt / 2, QColor(color)))
             self._points.append((sx, sy, data))
         self.canvas.rects = rects

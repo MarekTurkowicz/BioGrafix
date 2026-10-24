@@ -1,7 +1,7 @@
 """Point-in-polygon, distance to a segment and centroid."""
 
 import math
-from typing import Sequence
+from collections.abc import Sequence
 
 from ._common import Point
 

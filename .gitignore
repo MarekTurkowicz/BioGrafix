@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# local assistant configuration (kept out of the repository)
+.claude/
 
 # virtual environments
 .venv/

@@ -1,0 +1,14 @@
+# Normalise line endings to LF in the repository (the project is edited on Windows and in WSL).
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.bmp binary
+*.ico binary
+*.pdf binary
+*.onnx binary

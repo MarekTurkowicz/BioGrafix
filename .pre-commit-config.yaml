@@ -1,0 +1,48 @@
+# Install once (with .venv active):  pre-commit install
+# Run on every file:                  pre-commit run --all-files
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+default_stages: [pre-commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=2000]
+
+  # Tools from the project's .venv, so the versions match requirements-dev.txt.
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: ruff check --fix
+        language: system
+        types: [python]
+
+      - id: mypy
+        name: mypy
+        entry: mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: no-ai-attribution
+        name: commit message has no AI attribution
+        entry: '(?i)(co-authored[-]by:.*(claude|anthropic)|generated with .*claude|claude-session:|noreply@anthropic\.com)'
+        language: pygrep
+        stages: [commit-msg]
+
+      - id: unittest
+        name: unit tests
+        entry: env QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -t .
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

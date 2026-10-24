@@ -1,7 +1,5 @@
 """Types shared by the geometry modules."""
 
-from typing import List, Tuple
 
-
-Point = Tuple[float, float]
-Matrix3 = List[List[float]]
+Point = tuple[float, float]
+Matrix3 = list[list[float]]

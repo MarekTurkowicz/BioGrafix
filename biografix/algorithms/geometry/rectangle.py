@@ -1,11 +1,10 @@
 """Rectangle outline from Bresenham segments."""
 
-from typing import List, Tuple
 
 from .bresenham_line import bresenham_line
 
 
-def rect_outline(x1: int, y1: int, x2: int, y2: int) -> List[Tuple[int, int]]:
+def rect_outline(x1: int, y1: int, x2: int, y2: int) -> list[tuple[int, int]]:
     """Rectangle outline made of four Bresenham segments."""
     pts = []
     pts += bresenham_line(x1, y1, x2, y1)

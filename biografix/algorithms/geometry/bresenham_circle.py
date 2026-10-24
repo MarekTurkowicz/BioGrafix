@@ -1,9 +1,8 @@
 """Bresenham's (midpoint) circle algorithm."""
 
-from typing import List, Tuple
 
 
-def bresenham_circle(cx: int, cy: int, r: int) -> List[Tuple[int, int]]:
+def bresenham_circle(cx: int, cy: int, r: int) -> list[tuple[int, int]]:
     if r <= 0:
         return []
     pts = []

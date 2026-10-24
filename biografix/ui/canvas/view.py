@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import math
-from typing import Optional
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtGui import QColor, QFont, QPainter
 from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 
 from ...algorithms.geometry import apply_matrix, matrix_rotate, matrix_scale
@@ -73,16 +72,16 @@ class SceneView(QGraphicsView):
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
 
-        self.items: dict[str, ObjectItem] = {}
+        self.object_items: dict[str, ObjectItem] = {}
         self.tool = "select"
         self.show_pixel_values = True
-        self.draw_color: Optional[str] = None      # colour of new shapes; None means the default
+        self.draw_color: str | None = None      # colour of new shapes; None means the default
         self.draw_width: int = 1                   # stroke width of new shapes
-        self.pivot: Optional[tuple] = None
+        self.pivot: tuple | None = None
 
-        self._drag: Optional[dict] = None
-        self._start: Optional[tuple] = None        # drag start
-        self._hover: Optional[tuple] = None        # current drag position
+        self._drag: dict | None = None
+        self._start: tuple | None = None        # drag start
+        self._hover: tuple | None = None        # current drag position
         self._path: list = []                      # polygon / curve points being drawn
         self._pan_last = None
 
@@ -96,17 +95,17 @@ class SceneView(QGraphicsView):
     def rebuild(self):
         """Recreate the graphics items from the document."""
         self.scene().clear()
-        self.items = {}
+        self.object_items = {}
         for z, obj in enumerate(self.doc.objects):
             item = ObjectItem(obj, self)
             item.setZValue(z)
             self.scene().addItem(item)
-            self.items[obj.oid] = item
+            self.object_items[obj.oid] = item
         self._grow_scene_rect()
         self.viewport().update()
 
     def _on_object_updated(self, oid):
-        item = self.items.get(oid)
+        item = self.object_items.get(oid)
         if item:
             item.refresh()
         self._grow_scene_rect()
@@ -189,7 +188,7 @@ class SceneView(QGraphicsView):
         self.zoom_changed.emit(self.zoom)
 
     def focus_object(self, oid):
-        item = self.items.get(oid)
+        item = self.object_items.get(oid)
         if item:
             self.ensureVisible(item.boundingRect(), 40, 40)
 
@@ -216,7 +215,7 @@ class SceneView(QGraphicsView):
     def _scene_pos(self, event) -> QPointF:
         return self.mapToScene(event.position().toPoint())
 
-    def _image_at(self, p: QPointF) -> Optional[RasterImage]:
+    def _image_at(self, p: QPointF) -> RasterImage | None:
         for obj in reversed(self.doc.objects):
             if isinstance(obj, RasterImage) and obj.hit_test(p.x(), p.y(), 0):
                 return obj
@@ -495,7 +494,7 @@ class SceneView(QGraphicsView):
     _release_scale = _release_rotate
 
     # =============================================================== overlays ==
-    def drawForeground(self, painter: QPainter, rect: QRectF):
+    def drawForeground(self, painter: QPainter, rect):
         if not self.doc.objects:
             self._paint_empty_hint(painter)
         s = max(self.zoom, 1e-6)

@@ -1,6 +1,6 @@
 """Bézier curves (de Casteljau's algorithm)."""
 
-from typing import List, Sequence
+from collections.abc import Sequence
 
 from ._common import Point
 
@@ -19,7 +19,7 @@ def de_casteljau(points: Sequence[Point], t: float) -> Point:
     return pts[0]
 
 
-def bezier_points(points: Sequence[Point], steps: int = 200) -> List[Point]:
+def bezier_points(points: Sequence[Point], steps: int = 200) -> list[Point]:
     """Sample a Bézier curve into a list of (x, y) points."""
     if len(points) < 2:
         return []

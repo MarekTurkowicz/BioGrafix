@@ -18,8 +18,9 @@ A list or tuple may combine several of these.
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any
 
 from ..i18n import tr
 from .params import Param
@@ -54,7 +55,7 @@ class Operation:
     category: str
     label: str
     func: Callable
-    params: List[Param] = field(default_factory=list)
+    params: list[Param] = field(default_factory=list)
     description: str = ""
     section: str = ""                    # group title on the ribbon and section in the menu
     source: str = ""                     # optional note, not shown in the UI
@@ -64,9 +65,9 @@ class Operation:
     slow: bool = False                   # show a warning about large images
     shortcut: str = ""
     # defaults computed at run time, e.g. the shape centre: f(obj, context) -> dict
-    dynamic_defaults: Optional[Callable[[Any, dict], Dict[str, Any]]] = None
+    dynamic_defaults: Callable[[Any, dict], dict[str, Any]] | None = None
 
-    def history_label(self, values: Dict[str, Any]) -> str:
+    def history_label(self, values: dict[str, Any]) -> str:
         from .params import format_value
 
         title = f"{tr(self.category)}: {tr(self.label)}"
@@ -78,7 +79,7 @@ class Operation:
         return f"{title} ({shown})"
 
 
-REGISTRY: "OrderedDict[str, Operation]" = OrderedDict()
+REGISTRY: OrderedDict[str, Operation] = OrderedDict()
 
 
 def operation(
@@ -99,16 +100,16 @@ def operation(
     return decorator
 
 
-def group_by_section(ops: List[Operation]) -> "OrderedDict[str, List[Operation]]":
+def group_by_section(ops: list[Operation]) -> OrderedDict[str, list[Operation]]:
     """Group operations by section, keeping the order of first appearance."""
-    groups: "OrderedDict[str, List[Operation]]" = OrderedDict()
+    groups: OrderedDict[str, list[Operation]] = OrderedDict()
     for op in ops:
         groups.setdefault(op.section, []).append(op)
     return groups
 
 
-def operations_by_category() -> "OrderedDict[str, List[Operation]]":
-    groups: "OrderedDict[str, List[Operation]]" = OrderedDict()
+def operations_by_category() -> OrderedDict[str, list[Operation]]:
+    groups: OrderedDict[str, list[Operation]] = OrderedDict()
     for cat in CATEGORY_ORDER:
         groups[cat] = []
     for op in REGISTRY.values():

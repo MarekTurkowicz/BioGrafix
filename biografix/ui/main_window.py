@@ -5,14 +5,12 @@ from __future__ import annotations
 import os
 import sys
 import time
-from typing import Dict
 
 import numpy as np
 from PySide6.QtCore import QProcess, QSettings, Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
-    QPushButton,
     QDockWidget,
     QInputDialog,
     QLabel,
@@ -20,29 +18,29 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QProgressBar,
+    QPushButton,
     QToolBar,
     QUndoView,
     QVBoxLayout,
     QWidget,
 )
 
-from ..constants import APP_NAME, APP_TITLE, ORG_NAME
 from .. import i18n
+from ..constants import APP_NAME, APP_TITLE, ORG_NAME
 from ..core import registry
 from ..core.document import Document
 from ..core.registry import TARGET_SHAPE, Operation
 from ..core.runner import OperationError, OperationRunner
+from ..i18n import tr
 from ..io.images import OPEN_FILTER, SAVE_FILTER, load_image, save_image
 from ..operations import load_all
 from ..scene.objects import RasterImage
-from ..i18n import tr
 from ..scene.serialization import load_scene, save_scene
+from . import centering, file_dialogs, theme
 from .canvas.view import TOOLS, SceneView
 from .dialogs import FigureWindow, MarkdownDialog, ParamsDialog
-from .panels import ObjectsPanel, PropertiesPanel
-from . import file_dialogs, theme
-from . import centering
 from .palette import ColorPalette
+from .panels import ObjectsPanel, PropertiesPanel
 from .ribbon import ActionButton, Ribbon, action_tooltip
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -126,11 +124,11 @@ class MainWindow(QMainWindow):
         self.settings = QSettings(ORG_NAME, APP_NAME)
         self.doc = Document(self)
         self.runner = OperationRunner(self.doc, self)
-        self._param_memory: Dict[str, dict] = {}
-        self._tool_windows: Dict[str, object] = {}
+        self._param_memory: dict[str, dict] = {}
+        self._tool_windows: dict[str, object] = {}
         self._figure_windows = []
         self._started_at = 0.0
-        self.act: Dict[str, QAction] = {}
+        self.act: dict[str, QAction] = {}
 
         # theme and font must be applied before any widget is created
         theme.apply(str(self.settings.value("theme", theme.DEFAULT_THEME)),
@@ -847,4 +845,3 @@ class MainWindow(QMainWindow):
             event.accept()
         else:
             event.ignore()
-

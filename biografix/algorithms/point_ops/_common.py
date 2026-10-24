@@ -1,9 +1,7 @@
 """Helpers shared by the point operations."""
 
-from typing import Tuple
 
-
-Color = Tuple[int, int, int]
+Color = tuple[int, int, int]
 
 
 def clamp(v: int) -> int:

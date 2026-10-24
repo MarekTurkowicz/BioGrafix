@@ -8,8 +8,10 @@ from biografix.algorithms import geometry, thresholding
 from biografix.algorithms.color_models import cmyk_to_rgb, rgb_to_cmyk
 from biografix.core.imaging import array_to_pixels, paste_region, pixels_to_array, to_rgb
 from biografix.core.params import IntParam, MatrixParam
-from biografix.core.registry import REGISTRY, TARGET_IMAGE, Report
+from biografix.core.registry import REGISTRY, TARGET_IMAGE
 from biografix.operations import load_all
+from biografix.scene.objects import LineShape, PolygonShape
+from biografix.scene.serialization import scene_from_dict, scene_to_dict
 
 load_all()
 
@@ -109,6 +111,23 @@ class TestFormatsAndParams(unittest.TestCase):
         self.assertEqual(se.validate("0 1\n-1 1"), [[0, 1], [-1, 1]])
         with self.assertRaises(ValueError):
             se.validate("0 2")
+
+
+class TestSceneFile(unittest.TestCase):
+    def test_roundtrip(self):
+        objs = scene_from_dict(scene_to_dict([LineShape(x1=1, y1=2, x2=3, y2=4)]))
+        self.assertIsInstance(objs[0], LineShape)
+        self.assertEqual((objs[0].x1, objs[0].y2), (1, 4))
+
+    def test_polygons_only_file(self):
+        objs = scene_from_dict({"polygons": [{"points": [[0, 0], [5, 0], [5, 5]], "closed": False}]})
+        self.assertIsInstance(objs[0], PolygonShape)
+        self.assertFalse(objs[0].closed)
+
+    def test_invalid_file_is_rejected(self):
+        for bad in ([], {"objects": [{"name": "no type"}]}, {"polygons": [{"points": [["a", 0]]}]}):
+            with self.assertRaises(ValueError):
+                scene_from_dict(bad)
 
 
 if __name__ == "__main__":

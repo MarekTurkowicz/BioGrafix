@@ -64,6 +64,20 @@ Obrazy można podać od razu: `python main.py odcisk1.png odcisk2.png`.
 python -m unittest discover -s tests -t .
 ```
 
+## Kontrola jakości
+
+```bash
+pip install -r requirements-dev.txt
+pre-commit install          # raz, przy aktywnym venv
+ruff check .                # styl i typowe błędy
+mypy                        # sprawdzanie typów
+```
+
+Hooki `pre-commit` uruchamiają ruff i mypy przy każdym commicie, odrzucają wiadomości commitów
+z dopiskami o współautorstwie AI i uruchamiają testy przed `git push`. GitHub Actions
+(`.github/workflows/ci.yml`) powtarza te same kontrole dla każdego pusha i pull requesta.
+Format pliku sceny JSON jest walidowany przez pydantic (`biografix/scene/serialization.py`).
+
 ## Struktura
 
 ```

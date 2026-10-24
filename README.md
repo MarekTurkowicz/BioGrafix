@@ -64,6 +64,20 @@ Images can be passed on the command line: `python main.py fingerprint1.png finge
 python -m unittest discover -s tests -t .
 ```
 
+## Quality checks
+
+```bash
+pip install -r requirements-dev.txt
+pre-commit install          # once, with the venv active
+ruff check .                # style and common bugs
+mypy                        # type checking
+```
+
+The `pre-commit` hooks run ruff and mypy on every commit, reject commit messages that carry
+AI co-author attribution, and run the tests before `git push`. GitHub Actions
+(`.github/workflows/ci.yml`) repeats the same checks on every push and pull request.
+The scene JSON format is validated with pydantic (`biografix/scene/serialization.py`).
+
 ## Project layout
 
 ```

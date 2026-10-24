@@ -3,7 +3,6 @@
 import numpy as np
 from scipy.signal import convolve2d
 
-
 PREDEFINED_MASKS = {
     "Low-pass": np.array([
         [1 / 9, 1 / 9, 1 / 9],
