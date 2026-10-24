@@ -69,7 +69,8 @@ python -m unittest discover -s tests -t .
 ```
 main.py              entry point
 biografix/
-  algorithms/        pure algorithms, no GUI
+  algorithms/        pure algorithms, no GUI; one file = one algorithm
+                     (e.g. algorithms/thresholding/otsu.py), shared helpers in _common.py
   operations/        registers algorithms as tiles and menu entries
   core/              registry, parameters, document + undo history, background runner
   scene/             scene objects, JSON save / load

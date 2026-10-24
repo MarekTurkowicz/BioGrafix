@@ -69,7 +69,8 @@ python -m unittest discover -s tests -t .
 ```
 main.py              start aplikacji
 biografix/
-  algorithms/        czyste algorytmy, bez GUI
+  algorithms/        czyste algorytmy, bez GUI; jeden plik = jeden algorytm
+                     (np. algorithms/thresholding/otsu.py), wspólne pomocnicze w _common.py
   operations/        rejestracja algorytmów jako kafelki i pozycje menu
   core/              rejestr, parametry, dokument + historia, liczenie w tle
   scene/             obiekty sceny, zapis / odczyt JSON
