@@ -1,11 +1,14 @@
 """Algorithm and operation registry tests (no GUI)."""
 
+import time
 import unittest
+from collections import deque
 
 import numpy as np
 
-from biografix.algorithms import geometry, segmentation, thresholding
+from biografix.algorithms import geometry, segmentation, skeletonization, thresholding
 from biografix.algorithms.color_models import cmyk_to_rgb, rgb_to_cmyk
+from biografix.algorithms.skeletonization import k3m, kmm
 from biografix.core.imaging import array_to_pixels, paste_region, paste_region_where_selected, pixels_to_array, to_rgb
 from biografix.core.params import IntParam, MatrixParam
 from biografix.core.registry import REGISTRY, TARGET_IMAGE
@@ -196,6 +199,80 @@ class TestMaskedPaste(unittest.TestCase):
         self.assertEqual(int(out[..., 0].sum()) // 255, 2)
         self.assertEqual(out[1, 1, 0], 255)
         self.assertEqual(out[1, 2, 0], 0)
+
+
+RING_WEIGHTS = (128, 1, 2, 4, 8, 16, 32, 64)  # neighbours clockwise from the top-left corner
+
+
+def sticking_neighbours(weight_sum):
+    """Number of object neighbours if they form one run around the ring, else 0."""
+    bits = [(weight_sum & w) != 0 for w in RING_WEIGHTS]
+    runs = sum(1 for i in range(8) if bits[i] and not bits[i - 1])
+    return sum(bits) if runs == 1 and sum(bits) < 8 else 0
+
+
+def components_8(mask):
+    """Number of 8-connected components."""
+    seen = np.zeros_like(mask)
+    count = 0
+    for y, x in zip(*np.nonzero(mask), strict=True):
+        if seen[y, x]:
+            continue
+        count += 1
+        seen[y, x] = True
+        queue = deque([(y, x)])
+        while queue:
+            cy, cx = queue.popleft()
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    ny, nx = cy + dy, cx + dx
+                    if 0 <= ny < mask.shape[0] and 0 <= nx < mask.shape[1] and mask[ny, nx] and not seen[ny, nx]:
+                        seen[ny, nx] = True
+                        queue.append((ny, nx))
+    return count
+
+
+THINNING = {"Zhang-Suen": skeletonization.zhang_suen_thinning, "K3M": k3m.k3m_thinning, "KMM": kmm.kmm_thinning}
+
+
+class TestSkeletonization(unittest.TestCase):
+    def test_lookup_tables_follow_the_sticking_neighbours_rule(self):
+        def sums_with(counts):
+            return tuple(c for c in range(256) if sticking_neighbours(c) in counts)
+
+        self.assertEqual(sorted(k3m.A0), list(sums_with(range(2, 8))))
+        self.assertEqual(sorted(k3m.A1), list(sums_with({3})))
+        self.assertEqual(sorted(k3m.A2), list(sums_with({3, 4})))
+        self.assertEqual(sorted(k3m.A3), list(sums_with({3, 4, 5})))
+        self.assertEqual(sorted(k3m.A4), list(sums_with({3, 4, 5, 6})))
+        # phase 5 adds 7 neighbours only when the missing one is an edge neighbour (N, E, S, W)
+        self.assertEqual(sorted(set(k3m.A5) - set(k3m.A4)), [191, 239, 251, 254])
+        self.assertEqual(sorted(kmm.FOUR_SUMS), list(sums_with({2, 3, 4})))
+
+    def test_thick_bar_becomes_a_thin_line(self):
+        bar = np.zeros((11, 40), bool)
+        bar[3:8, 5:35] = True  # 5 px thick
+        for name, thinning in THINNING.items():
+            with self.subTest(method=name):
+                skeleton, _iterations = thinning(bar)
+                self.assertFalse((skeleton & ~bar).any())            # only object pixels remain
+                self.assertEqual(components_8(skeleton), 1)          # still one piece
+                self.assertLessEqual(int(skeleton.sum(axis=0).max()), 2)  # at most 2 px per column
+                self.assertGreater(int(skeleton.sum()), 20)          # the line spans the bar
+
+    def test_fingerprint_is_thinned_in_under_a_second(self):
+        from PIL import Image
+
+        image = np.asarray(Image.open("biografix/resources/fingerprint.png").convert("RGB"))
+        mask = skeletonization.object_mask(thresholding.sauvola_threshold(image, 25, 0.2, 128.0))
+        for name, thinning in THINNING.items():
+            with self.subTest(method=name):
+                thinning(mask[:8, :8])  # load the compiled code before timing
+                started = time.perf_counter()
+                skeleton, _iterations = thinning(mask)
+                self.assertLess(time.perf_counter() - started, 1.0)
+                blocks_2x2 = skeleton[:-1, :-1] & skeleton[1:, :-1] & skeleton[:-1, 1:] & skeleton[1:, 1:]
+                self.assertLessEqual(int(blocks_2x2.sum()), 2)  # essentially one pixel wide
 
 
 class TestSceneFile(unittest.TestCase):

@@ -12,6 +12,7 @@ MODULES = [
     "thresholding",
     "morphology",
     "segmentation",
+    "skeletonization",
     "analysis",
     "geometry",
 ]

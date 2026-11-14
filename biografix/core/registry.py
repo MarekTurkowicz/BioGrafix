@@ -33,6 +33,7 @@ CATEGORY_ORDER = [
     "Thresholding",
     "Morphology",
     "Segmentation",
+    "Skeletonization",
     "Analysis",
     "Geometry",
 ]

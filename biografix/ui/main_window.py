@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 import time
 
 import numpy as np
@@ -34,6 +35,7 @@ from ..core.runner import OperationError, OperationRunner
 from ..i18n import tr
 from ..io.images import OPEN_FILTER, SAVE_FILTER, load_image, save_image
 from ..operations import load_all
+from ..operations.skeletonization import preload_compiled_thinning
 from ..scene.objects import RasterImage
 from ..scene.serialization import load_scene, save_scene
 from . import centering, file_dialogs, theme
@@ -54,6 +56,7 @@ DEMO_IMAGES = [os.path.join(RESOURCES, name) for name in ("portrait.png", "finge
 TASKS = [
     ("Task 1 – Thresholding", ["bin.manual", "bin.niblack", "bin.sauvola", "bin.phansalkar", "bin.otsu"]),
     ("Task 2 – Segmentation", ["seg.fill", "seg.expand", "seg.shrink", "seg.invert", "seg.watershed"]),
+    ("Task 3 – Skeletonization", ["skel.k3m", "skel.zhang_suen", "skel.kmm"]),
 ]
 
 
@@ -155,6 +158,8 @@ class MainWindow(QMainWindow):
         self._initial_geometry()
         self._update_title()
         self.view.set_tool("select")
+        # numba needs several seconds to load; do it now so the first K3M / KMM run is fast
+        threading.Thread(target=preload_compiled_thinning, name="numba-preload", daemon=True).start()
 
     # ========================================================= UI construction ==
     def _build_docks(self):

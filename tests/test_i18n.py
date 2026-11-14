@@ -39,7 +39,7 @@ ERROR_MESSAGES = [
 ]
 
 # Method names and symbols that read the same in both languages.
-NAMES = {"Otsu", "Niblack", "Sauvola", "Phansalkar", "Percent Black", "Mean Iterative Selection",
+NAMES = {"Otsu", "Niblack", "Sauvola", "Phansalkar", "K3M", "KMM", "Zhang-Suen", "Percent Black", "Mean Iterative Selection",
          "Histogram", "Prewitt", "Sobel", "Laplace", "Zoom: {percent}%",
          "H min [°]", "H max [°]", "S min", "V min"}
 
