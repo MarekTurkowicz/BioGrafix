@@ -4,9 +4,9 @@ import unittest
 
 import numpy as np
 
-from biografix.algorithms import geometry, thresholding
+from biografix.algorithms import geometry, segmentation, thresholding
 from biografix.algorithms.color_models import cmyk_to_rgb, rgb_to_cmyk
-from biografix.core.imaging import array_to_pixels, paste_region, pixels_to_array, to_rgb
+from biografix.core.imaging import array_to_pixels, paste_masked, paste_region, pixels_to_array, to_rgb
 from biografix.core.params import IntParam, MatrixParam
 from biografix.core.registry import REGISTRY, TARGET_IMAGE
 from biografix.operations import load_all
@@ -111,6 +111,91 @@ class TestFormatsAndParams(unittest.TestCase):
         self.assertEqual(se.validate("0 1\n-1 1"), [[0, 1], [-1, 1]])
         with self.assertRaises(ValueError):
             se.validate("0 2")
+
+
+def stripes():
+    """7×5 image: black left part, a white column at x=3, black right part."""
+    img = np.zeros((5, 7, 3), np.uint8)
+    img[:, 3] = 255
+    return img
+
+
+class TestMagicWand(unittest.TestCase):
+    def test_local_mode_stops_at_other_values(self):
+        mask = segmentation.magic_wand(stripes(), 0, 0, 10, 10)
+        self.assertEqual(mask.sum(), 15)
+        self.assertFalse(mask[:, 3:].any())
+
+    def test_global_mode_ignores_connectivity(self):
+        mask = segmentation.magic_wand(stripes(), 0, 0, 10, 10, global_mode=True)
+        self.assertEqual(mask.sum(), 30)
+        self.assertFalse(mask[:, 3].any())
+
+    def test_range_is_an_interval_around_the_seed(self):
+        img = np.zeros((1, 5, 3), np.uint8)
+        img[0, :, :] = np.array([90, 95, 100, 120, 130])[:, None]
+        # seed 100: accept [100 - 5, 100 + 20] = [95, 120]
+        mask = segmentation.magic_wand(img, 2, 0, below=5, above=20, global_mode=True)
+        self.assertEqual(mask[0].tolist(), [False, True, True, True, False])
+
+    def test_max_pixels(self):
+        local = segmentation.magic_wand(stripes(), 0, 0, 10, 10, max_pixels=4)
+        self.assertEqual(local.sum(), 4)
+        self.assertTrue(local[0, 0])
+        glob = segmentation.magic_wand(stripes(), 0, 0, 10, 10, max_pixels=4, global_mode=True)
+        self.assertEqual(glob.sum(), 4)
+        self.assertFalse(glob[:, 4:].any())  # nearest pixels to the click come first
+
+    def test_connectivity(self):
+        img = np.full((3, 3, 3), 255, np.uint8)
+        img[0, 0] = img[1, 1] = img[2, 2] = 0  # diagonal line
+        self.assertEqual(segmentation.magic_wand(img, 0, 0, 0, 0, connectivity=4).sum(), 1)
+        self.assertEqual(segmentation.magic_wand(img, 0, 0, 0, 0, connectivity=8).sum(), 3)
+
+    def test_rgb_mode_compares_each_channel(self):
+        img = np.zeros((1, 2, 3), np.uint8)
+        img[0, 0] = (100, 100, 100)
+        img[0, 1] = (70, 100, 130)  # same average, different channels
+        self.assertEqual(segmentation.magic_wand(img, 0, 0, 5, 5, "gray", global_mode=True).sum(), 2)
+        self.assertEqual(segmentation.magic_wand(img, 0, 0, 5, 5, "rgb", global_mode=True).sum(), 1)
+
+
+class TestSelectionMorphology(unittest.TestCase):
+    def test_dilate_and_erode(self):
+        point = np.zeros((7, 7), bool)
+        point[3, 3] = True
+        self.assertEqual(segmentation.dilate_mask(point, 1, "square").sum(), 9)
+        self.assertEqual(segmentation.dilate_mask(point, 1, "cross").sum(), 5)
+        self.assertEqual(segmentation.dilate_mask(point, 2, "disk").sum(), 13)
+        self.assertTrue(np.array_equal(segmentation.erode_mask(segmentation.dilate_mask(point, 2), 2), point))
+
+    def test_erosion_shrinks_from_the_image_border(self):
+        full = np.ones((5, 5), bool)
+        self.assertEqual(segmentation.erode_mask(full, 1).sum(), 9)
+
+
+class TestWatershed(unittest.TestCase):
+    def test_two_flat_areas_give_two_regions(self):
+        img = np.zeros((20, 30, 3), np.uint8)
+        img[:, 15:] = 200
+        labels, regions = segmentation.watershed(img, smoothing=1, marker_percent=50, min_marker=5)
+        self.assertEqual(regions, 2)
+        self.assertNotEqual(labels[10, 2], labels[10, 27])
+        self.assertTrue((labels[:, 13:17] == segmentation.LINE).any())  # line along the edge
+        out = segmentation.render_regions(img, labels)
+        self.assertEqual(tuple(out[10, 2]), (0, 0, 0))
+        self.assertEqual(tuple(out[10, 27]), (200, 200, 200))
+
+
+class TestMaskedPaste(unittest.TestCase):
+    def test_only_masked_pixels_change(self):
+        full = np.zeros((4, 4, 3), np.uint8)
+        region = np.full((2, 2, 3), 255, np.uint8)
+        mask = np.array([[True, False], [False, True]])
+        out = paste_masked(full, region, (1, 1, 3, 3), mask)
+        self.assertEqual(int(out[..., 0].sum()) // 255, 2)
+        self.assertEqual(out[1, 1, 0], 255)
+        self.assertEqual(out[1, 2, 0], 0)
 
 
 class TestSceneFile(unittest.TestCase):

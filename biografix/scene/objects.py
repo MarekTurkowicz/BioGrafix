@@ -405,6 +405,7 @@ class RasterImage(SceneObject):
         original: pixels as loaded, used by "Restore original".
         w, h: displayed size (nearest-neighbour scaling).
         roi: selected region ``(x0, y0, x1, y1)`` in image pixels, or None.
+        selection: (H, W) boolean mask from the magic wand, or None; not saved in scene files.
     """
 
     x: float = 0
@@ -417,6 +418,7 @@ class RasterImage(SceneObject):
     roi: tuple[int, int, int, int] | None = None
     name: str = ""
     oid: str = ""
+    selection: np.ndarray | None = field(default=None, repr=False, compare=False)
 
     kind = "image"
     kind_label = "Image"
@@ -449,6 +451,7 @@ class RasterImage(SceneObject):
             self.w = max(1, int(round(self.src_w * sx)))
             self.h = max(1, int(round(self.src_h * sy)))
             self.roi = None
+            self.selection = None
 
     def scene_to_pixel(self, sx: float, sy: float) -> tuple[int, int]:
         """Map scene coordinates to source pixel indices (may fall outside the image)."""

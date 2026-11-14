@@ -13,6 +13,7 @@ from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 
+import numpy as np
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QUndoCommand, QUndoStack
 
@@ -222,7 +223,27 @@ class Document(QObject):
             self.selection_changed.emit()
 
     def set_roi(self, image: RasterImage, roi) -> None:
-        """Set or clear an image region (not recorded in the history)."""
+        """Set or clear a rectangular image region (not recorded in the history).
+
+        A region and a magic-wand selection exclude each other.
+        """
         image.roi = roi
+        if roi is not None:
+            image.selection = None
+        self.object_updated.emit(image.oid)
+        self.selection_changed.emit()
+
+    def set_selection(self, image: RasterImage, mask) -> None:
+        """Set or clear the magic-wand selection mask (not recorded in the history)."""
+        if mask is not None:
+            mask = np.array(mask, dtype=bool)
+            if mask.shape != image.pixels.shape[:2]:
+                raise ValueError("The selection mask does not match the image size.")
+            if not mask.any():
+                mask = None
+            else:
+                mask.flags.writeable = False
+                image.roi = None
+        image.selection = mask
         self.object_updated.emit(image.oid)
         self.selection_changed.emit()

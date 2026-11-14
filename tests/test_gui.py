@@ -242,13 +242,13 @@ class TestMouseTools(GuiTestCase):
         self.assertEqual(self.doc.undo_stack.count(), count)
 
     def test_palette_color_for_new_and_selected_shapes(self):
-        self.w.palette.choose("#ff9800")
+        self.w.color_palette.choose("#ff9800")
         self.v.set_tool("line")
         self.drag(100, 100, 200, 150)
         line = self.doc.objects[-1]
         self.assertEqual(line.color, "#ff9800")
         self.doc.select(line.oid)
-        self.w.palette.choose("#26c6da")                    # applies to the selected shape
+        self.w.color_palette.choose("#26c6da")                    # applies to the selected shape
         self.assertEqual(self.doc.find(line.oid).color, "#26c6da")
         self.doc.undo_stack.undo()
         self.assertEqual(self.doc.find(line.oid).color, "#ff9800")
@@ -263,7 +263,7 @@ class TestMouseTools(GuiTestCase):
         line = self.doc.objects[-1]
         self.doc.select(line.oid)
         count = self.doc.undo_stack.count()
-        slider = self.w.palette.width_slider
+        slider = self.w.color_palette.width_slider
         slider.setSliderDown(True)                          # dragging: preview only
         for value in (3, 5, 7):
             slider.setValue(value)
@@ -279,6 +279,43 @@ class TestMouseTools(GuiTestCase):
         self.v.set_tool("roi")
         self.drag(img.x + 10, img.y + 20, img.x + 40, img.y + 50)
         self.assertEqual(self.doc.find(img.oid).roi, (10, 20, 41, 51))
+
+
+class TestMagicWand(GuiTestCase):
+    def two_tone_image(self):
+        px = np.full((60, 80, 3), 50, np.uint8)
+        px[:, 40:] = 200
+        img = RasterImage(x=10, y=10, pixels=px, name="two.png")
+        self.doc.add_objects([img], "image")
+        self.v.set_tool("wand")
+        return img
+
+    def test_click_shift_click_and_fill(self):
+        img = self.two_tone_image()
+        self.click(20, 20)                                   # left half
+        self.assertEqual(int(img.selection.sum()), 60 * 40)
+        self.click(80, 20, Qt.KeyboardModifier.ShiftModifier)  # add the right half
+        self.assertEqual(int(img.selection.sum()), 60 * 80)
+        self.click(80, 20, Qt.KeyboardModifier.ControlModifier)  # subtract it again
+        self.assertEqual(int(img.selection.sum()), 60 * 40)
+
+        self.w.color_palette.choose("#ff0000")
+        self.w.fill_selection_now()
+        deadline = time.time() + 10
+        while self.w.runner.busy and time.time() < deadline:
+            app.processEvents()
+        self.assertEqual(tuple(img.pixels[5, 5]), (255, 0, 0))    # selected: filled
+        self.assertEqual(tuple(img.pixels[5, 70]), (200, 200, 200))  # not selected: unchanged
+        self.doc.undo_stack.undo()  # undo restores a snapshot of the image object
+        self.assertEqual(tuple(self.doc.find(img.oid).pixels[5, 5]), (50, 50, 50))
+
+    def test_panel_settings_rerun_the_last_click(self):
+        img = self.two_tone_image()
+        self.click(20, 20)
+        self.w.wand_panel.above.setValue(200)  # 200 is now within [50 - 20, 50 + 200]
+        self.assertEqual(int(img.selection.sum()), 60 * 80)
+        self.w.wand_panel.max_pixels.setValue(100)
+        self.assertEqual(int(img.selection.sum()), 100)
 
 
 if __name__ == "__main__":

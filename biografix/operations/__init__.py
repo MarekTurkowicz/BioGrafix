@@ -11,6 +11,7 @@ MODULES = [
     "filters",
     "thresholding",
     "morphology",
+    "segmentation",
     "analysis",
     "geometry",
 ]
