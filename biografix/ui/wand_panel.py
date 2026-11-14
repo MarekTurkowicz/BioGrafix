@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
@@ -16,11 +18,36 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..algorithms.segmentation import CompareMode, Connectivity
 from ..core.document import Document
 from ..i18n import tr
 from .ribbon import ActionButton
 
-DEFAULT_RANGE = 20
+DEFAULT_VALUE_RANGE = 20
+
+
+@dataclass(frozen=True)
+class MagicWandSettings:
+    """Values chosen in the panel; all but ``fill_on_click`` are arguments of ``magic_wand_selection``."""
+
+    range_below: int = DEFAULT_VALUE_RANGE
+    range_above: int = DEFAULT_VALUE_RANGE
+    compare_mode: CompareMode = CompareMode.GRAY
+    max_pixels: int = 0
+    connectivity: Connectivity = Connectivity.FOUR
+    global_mode: bool = False
+    fill_on_click: bool = False
+
+    def selection_arguments(self) -> dict:
+        """Keyword arguments for ``magic_wand_selection``."""
+        return {
+            "range_below": self.range_below,
+            "range_above": self.range_above,
+            "compare_mode": self.compare_mode,
+            "max_pixels": self.max_pixels,
+            "connectivity": self.connectivity,
+            "global_mode": self.global_mode,
+        }
 
 
 class WandPanel(QWidget):
@@ -36,68 +63,67 @@ class WandPanel(QWidget):
         box = QGroupBox(tr("Magic wand"))
         form = QFormLayout(box)
 
-        self.mode = QComboBox()
-        self.mode.addItem(tr("Local – connected pixels (flood fill)"), False)
-        self.mode.addItem(tr("Global – whole image (global flood mode)"), True)
-        form.addRow(tr("Mode"), self.mode)
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem(tr("Local – connected pixels (flood fill)"), False)
+        self.mode_combo.addItem(tr("Global – whole image (global flood mode)"), True)
+        form.addRow(tr("Mode"), self.mode_combo)
 
-        self.compare = QComboBox()
-        self.compare.addItem(tr("Gray (R+G+B)/3"), "gray")
-        self.compare.addItem(tr("Each RGB channel"), "rgb")
-        form.addRow(tr("Compare"), self.compare)
+        self.compare_mode_combo = QComboBox()
+        self.compare_mode_combo.addItem(tr("Gray (R+G+B)/3"), CompareMode.GRAY.value)
+        self.compare_mode_combo.addItem(tr("Each RGB channel"), CompareMode.RGB.value)
+        form.addRow(tr("Compare"), self.compare_mode_combo)
 
-        self.below = self._spin(0, 255, DEFAULT_RANGE)
-        self.above = self._spin(0, 255, DEFAULT_RANGE)
-        form.addRow(tr("Range below the clicked value"), self.below)
-        form.addRow(tr("Range above the clicked value"), self.above)
-        self.range_hint = QLabel()
-        self.range_hint.setWordWrap(True)
-        form.addRow(self.range_hint)
+        self.range_below_spin = self._spin_box(0, 255, DEFAULT_VALUE_RANGE)
+        self.range_above_spin = self._spin_box(0, 255, DEFAULT_VALUE_RANGE)
+        form.addRow(tr("Range below the clicked value"), self.range_below_spin)
+        form.addRow(tr("Range above the clicked value"), self.range_above_spin)
+        self.accepted_range_label = QLabel()
+        self.accepted_range_label.setWordWrap(True)
+        form.addRow(self.accepted_range_label)
 
-        self.max_pixels = self._spin(0, 100_000_000, 0)
-        self.max_pixels.setSpecialValueText(tr("no limit"))
-        self.max_pixels.setSingleStep(100)
-        form.addRow(tr("Maximum number of pixels"), self.max_pixels)
+        self.max_pixels_spin = self._spin_box(0, 100_000_000, 0)
+        self.max_pixels_spin.setSpecialValueText(tr("no limit"))
+        self.max_pixels_spin.setSingleStep(100)
+        form.addRow(tr("Maximum number of pixels"), self.max_pixels_spin)
 
-        self.connectivity = QComboBox()
-        self.connectivity.addItem(tr("4 neighbours"), 4)
-        self.connectivity.addItem(tr("8 neighbours"), 8)
-        form.addRow(tr("Connectivity"), self.connectivity)
+        self.connectivity_combo = QComboBox()
+        self.connectivity_combo.addItem(tr("4 neighbours"), Connectivity.FOUR.value)
+        self.connectivity_combo.addItem(tr("8 neighbours"), Connectivity.EIGHT.value)
+        form.addRow(tr("Connectivity"), self.connectivity_combo)
 
-        self.fill = QCheckBox(tr("Fill with the palette colour on click (like Paint)"))
-        form.addRow(self.fill)
+        self.fill_on_click_checkbox = QCheckBox(tr("Fill with the palette colour on click (like Paint)"))
+        form.addRow(self.fill_on_click_checkbox)
         layout.addWidget(box)
 
-        self.actions_box = QGroupBox(tr("Selection"))
-        self.actions_grid = QGridLayout(self.actions_box)
-        layout.addWidget(self.actions_box)
+        self.selection_actions_box = QGroupBox(tr("Selection"))
+        self.selection_actions_grid = QGridLayout(self.selection_actions_box)
+        layout.addWidget(self.selection_actions_box)
 
-        self.info = QLabel()
-        self.info.setWordWrap(True)
-        layout.addWidget(self.info)
-        hint = QLabel(tr("Click: new selection · Shift+click: add · Ctrl+click: subtract"))
-        hint.setWordWrap(True)
-        layout.addWidget(hint)
+        self.selection_size_label = QLabel()
+        self.selection_size_label.setWordWrap(True)
+        layout.addWidget(self.selection_size_label)
+        modifier_hint = QLabel(tr("Click: new selection · Shift+click: add · Ctrl+click: subtract"))
+        modifier_hint.setWordWrap(True)
+        layout.addWidget(modifier_hint)
         layout.addStretch(1)
 
-        for combo in (self.mode, self.compare, self.connectivity):
-            combo.currentIndexChanged.connect(self._changed)
-        for spin in (self.below, self.above, self.max_pixels):
-            spin.valueChanged.connect(self._changed)
-        self.fill.toggled.connect(self._update_hints)
-        self.doc.selection_changed.connect(self.update_info)
-        self.doc.object_updated.connect(lambda _oid: self.update_info())
-        self._update_hints()
-        self.update_info()
+        for combo in (self.mode_combo, self.compare_mode_combo, self.connectivity_combo):
+            combo.currentIndexChanged.connect(self._on_setting_changed)
+        for spin in (self.range_below_spin, self.range_above_spin, self.max_pixels_spin):
+            spin.valueChanged.connect(self._on_setting_changed)
+        self.doc.selection_changed.connect(self.show_selection_size)
+        self.doc.object_updated.connect(lambda _oid: self.show_selection_size())
+        self._update_dependent_widgets()
+        self.show_selection_size()
 
     @staticmethod
-    def _spin(lo: int, hi: int, value: int) -> QSpinBox:
+    def _spin_box(minimum: int, maximum: int, value: int) -> QSpinBox:
         spin = QSpinBox()
-        spin.setRange(lo, hi)
+        spin.setRange(minimum, maximum)
         spin.setValue(value)
         return spin
 
-    def add_actions(self, actions: list[tuple[QAction, str]], columns: int = 2) -> None:
+    def add_selection_buttons(self, actions: list[tuple[QAction, str]], columns: int = 2) -> None:
         """Add buttons that trigger ``actions`` (action, button text)."""
         for i, (action, text) in enumerate(actions):
             button = ActionButton()
@@ -105,35 +131,35 @@ class WandPanel(QWidget):
             button.setText(text)
             button.setToolTip(action.toolTip() or text)
             button.bind_action(action)
-            self.actions_grid.addWidget(button, i // columns, i % columns)
+            self.selection_actions_grid.addWidget(button, i // columns, i % columns)
 
-    def settings(self) -> dict:
-        """Keyword arguments for the magic wand, plus ``fill``."""
-        return {
-            "below": self.below.value(),
-            "above": self.above.value(),
-            "compare": self.compare.currentData(),
-            "max_pixels": self.max_pixels.value(),
-            "connectivity": self.connectivity.currentData(),
-            "global_mode": self.mode.currentData(),
-            "fill": self.fill.isChecked(),
-        }
+    def current_settings(self) -> MagicWandSettings:
+        return MagicWandSettings(
+            range_below=self.range_below_spin.value(),
+            range_above=self.range_above_spin.value(),
+            compare_mode=CompareMode(self.compare_mode_combo.currentData()),
+            max_pixels=self.max_pixels_spin.value(),
+            connectivity=Connectivity(self.connectivity_combo.currentData()),
+            global_mode=bool(self.mode_combo.currentData()),
+            fill_on_click=self.fill_on_click_checkbox.isChecked(),
+        )
 
-    def _changed(self, *_):
-        self._update_hints()
+    def _on_setting_changed(self, *_):
+        self._update_dependent_widgets()
         self.settings_changed.emit()
 
-    def _update_hints(self, *_):
-        self.connectivity.setEnabled(not self.mode.currentData())
-        self.range_hint.setText(tr("Accepted values: [v − {below}, v + {above}], v = value of the clicked pixel",
-                                   below=self.below.value(), above=self.above.value()))
+    def _update_dependent_widgets(self):
+        self.connectivity_combo.setEnabled(not self.mode_combo.currentData())  # global mode ignores neighbours
+        self.accepted_range_label.setText(
+            tr("Accepted values: [v − {below}, v + {above}], v = value of the clicked pixel",
+               below=self.range_below_spin.value(), above=self.range_above_spin.value()))
 
-    def update_info(self):
+    def show_selection_size(self):
         img = self.doc.target_image()
         if img is None or img.selection is None:
-            self.info.setText(tr("No selection – operations apply to the whole image (or the region)."))
+            self.selection_size_label.setText(tr("No selection – operations apply to the whole image (or the region)."))
             return
-        n = int(img.selection.sum())
-        total = img.selection.size
-        self.info.setText(tr("Selected: {n} px ({percent}% of the image) – operations apply only to the selection.",
-                             n=n, percent=f"{100 * n / total:.1f}"))
+        selected = int(img.selection.sum())
+        self.selection_size_label.setText(
+            tr("Selected: {n} px ({percent}% of the image) – operations apply only to the selection.",
+               n=selected, percent=f"{100 * selected / img.selection.size:.1f}"))

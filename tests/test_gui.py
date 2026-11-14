@@ -300,7 +300,7 @@ class TestMagicWand(GuiTestCase):
         self.assertEqual(int(img.selection.sum()), 60 * 40)
 
         self.w.color_palette.choose("#ff0000")
-        self.w.fill_selection_now()
+        self.w.fill_selection_with_palette_colour()
         deadline = time.time() + 10
         while self.w.runner.busy and time.time() < deadline:
             app.processEvents()
@@ -312,9 +312,9 @@ class TestMagicWand(GuiTestCase):
     def test_panel_settings_rerun_the_last_click(self):
         img = self.two_tone_image()
         self.click(20, 20)
-        self.w.wand_panel.above.setValue(200)  # 200 is now within [50 - 20, 50 + 200]
+        self.w.wand_panel.range_above_spin.setValue(200)  # 200 is now within [50 - 20, 50 + 200]
         self.assertEqual(int(img.selection.sum()), 60 * 80)
-        self.w.wand_panel.max_pixels.setValue(100)
+        self.w.wand_panel.max_pixels_spin.setValue(100)
         self.assertEqual(int(img.selection.sum()), 100)
 
 

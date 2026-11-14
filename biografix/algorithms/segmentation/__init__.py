@@ -7,6 +7,20 @@
 """
 
 from .background import remove_background
-from .magic_wand import COMPARE_MODES, flood_select, global_select, magic_wand, range_mask
-from .selection_morphology import SE_SHAPES, dilate_mask, erode_mask, structuring_element
-from .watershed import LINE, flood, label_components, render_regions, sobel_magnitude, watershed
+from .magic_wand import (
+    CompareMode,
+    Connectivity,
+    flood_fill_from_seed,
+    magic_wand_selection,
+    pixels_in_value_range,
+    select_matching_pixels_globally,
+)
+from .selection_morphology import StructuringElementShape, dilate_selection, erode_selection, structuring_element
+from .watershed import (
+    WATERSHED_LINE,
+    flood_from_markers,
+    label_connected_regions,
+    paint_regions_with_mean_colour,
+    sobel_gradient_magnitude,
+    watershed_segmentation,
+)

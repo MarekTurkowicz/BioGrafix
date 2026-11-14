@@ -60,13 +60,13 @@ def paste_region(full: np.ndarray, region: np.ndarray, roi) -> np.ndarray:
     return out
 
 
-def mask_bbox(mask: np.ndarray) -> tuple[int, int, int, int]:
+def bounding_box_of_mask(mask: np.ndarray) -> tuple[int, int, int, int]:
     """Bounding box ``(x0, y0, x1, y1)`` of the True pixels of a non-empty mask (x1, y1 exclusive)."""
     ys, xs = np.nonzero(mask)
     return int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
 
 
-def paste_masked(full: np.ndarray, region: np.ndarray, roi, mask: np.ndarray) -> np.ndarray:
+def paste_region_where_selected(full: np.ndarray, region: np.ndarray, roi, mask: np.ndarray) -> np.ndarray:
     """Like :func:`paste_region`, but only the pixels where ``mask`` (region-sized) is True change."""
     x0, y0, x1, y1 = roi
     pasted = paste_region(full, region, roi)  # keeps the channel count of ``full``

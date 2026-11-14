@@ -37,8 +37,8 @@ class ObjectItem(QGraphicsItem):
         self.view = view
         self._qimage: Any = None
         self._qimage_key: Any = None
-        self._selection_image: Any = None
-        self._selection_key: Any = None
+        self._selection_overlay_image: Any = None
+        self._selection_overlay_key: Any = None
         self._points_key = None
         self._points_poly = None
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemUsesExtendedStyleOption, True)
@@ -185,10 +185,10 @@ class ObjectItem(QGraphicsItem):
             painter.drawRect(rect)
 
         if obj.selection is not None:
-            if self._selection_key != id(obj.selection):
-                self._selection_key = id(obj.selection)
-                self._selection_image = array_to_qimage(selection_overlay(obj.selection))
-            painter.drawImage(target, self._selection_image)
+            if self._selection_overlay_key != id(obj.selection):
+                self._selection_overlay_key = id(obj.selection)
+                self._selection_overlay_image = array_to_qimage(selection_overlay_rgba(obj.selection))
+            painter.drawImage(target, self._selection_overlay_image)
 
     def _paint_pixel_values(self, painter, option, obj: RasterImage):
         """Draw the RGB value on every visible pixel at high zoom."""
@@ -225,11 +225,12 @@ class ObjectItem(QGraphicsItem):
         painter.restore()
 
 
-def selection_overlay(mask: np.ndarray) -> np.ndarray:
+def selection_overlay_rgba(mask: np.ndarray) -> np.ndarray:
     """RGBA overlay of a selection: tinted inside, opaque on the border pixels."""
     padded = np.pad(mask, 1, constant_values=False)
-    inner = (padded[:-2, 1:-1] & padded[2:, 1:-1] & padded[1:-1, :-2] & padded[1:-1, 2:]) & mask
-    out = np.zeros(mask.shape + (4,), dtype=np.uint8)
-    out[mask] = SELECTION_FILL
-    out[mask & ~inner] = SELECTION_EDGE
-    return out
+    all_four_neighbours_selected = padded[:-2, 1:-1] & padded[2:, 1:-1] & padded[1:-1, :-2] & padded[1:-1, 2:]
+    border = mask & ~all_four_neighbours_selected
+    overlay = np.zeros(mask.shape + (4,), dtype=np.uint8)
+    overlay[mask] = SELECTION_FILL
+    overlay[border] = SELECTION_EDGE
+    return overlay

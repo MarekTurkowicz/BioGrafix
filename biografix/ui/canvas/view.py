@@ -11,7 +11,7 @@ from PySide6.QtGui import QColor, QFont, QPainter
 from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 
 from ...algorithms.geometry import apply_matrix, matrix_rotate, matrix_scale
-from ...algorithms.segmentation import magic_wand
+from ...algorithms.segmentation import magic_wand_selection
 from ...constants import COL_PREV, COL_ROI, COL_SEL, H_FILL, H_OUTLINE, HANDLE_PX, HIT_TOLERANCE_PX
 from ...core.document import Document
 from ...i18n import tr
@@ -24,6 +24,7 @@ from ...scene.objects import (
     RectShape,
 )
 from .. import theme
+from ..wand_panel import MagicWandSettings
 from .items import ObjectItem, cosmetic_pen
 
 IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".bmp", ".tif", ".tiff", ".ppm", ".pgm", ".pbm", ".gif", ".webp")
@@ -64,7 +65,7 @@ class SceneView(QGraphicsView):
     zoom_changed = Signal(float)
     status_message = Signal(str)
     files_dropped = Signal(list)
-    wand_fill_requested = Signal()
+    fill_selection_requested = Signal()
 
     def __init__(self, doc: Document, parent=None):
         super().__init__(parent)
@@ -84,8 +85,8 @@ class SceneView(QGraphicsView):
         self.draw_color: str | None = None      # colour of new shapes; None means the default
         self.draw_width: int = 1                   # stroke width of new shapes
         self.pivot: tuple | None = None
-        self.wand_settings: Callable[[], dict] = dict  # provided by the Magic wand panel
-        self._wand_click: dict | None = None     # last click, re-run when the settings change
+        self.magic_wand_settings: Callable[[], MagicWandSettings] = MagicWandSettings  # set by the Magic wand panel
+        self._last_wand_click: dict | None = None  # re-run when the panel settings change
 
         self._drag: dict | None = None
         self._start: tuple | None = None        # drag start
@@ -458,39 +459,38 @@ class SceneView(QGraphicsView):
             return
         self.doc.select(img.oid)
         px, py = img.scene_to_pixel(p.x(), p.y())
-        mods = event.modifiers()
-        mode = ("add" if mods & Qt.KeyboardModifier.ShiftModifier
-                else "subtract" if mods & Qt.KeyboardModifier.ControlModifier else "replace")
-        self._wand_click = {"oid": img.oid, "x": px, "y": py, "mode": mode,
-                            "base": img.selection, "pixels": img.pixels}
-        self.apply_wand(fill=True)
+        modifiers = event.modifiers()
+        combine = ("add" if modifiers & Qt.KeyboardModifier.ShiftModifier
+                   else "subtract" if modifiers & Qt.KeyboardModifier.ControlModifier else "replace")
+        self._last_wand_click = {"oid": img.oid, "x": px, "y": py, "combine": combine,
+                                 "selection_before": img.selection, "pixels": img.pixels}
+        self.rerun_magic_wand(after_click=True)
 
-    def apply_wand(self, fill: bool = False) -> None:
-        """Select from the last click with the current settings.
+    def rerun_magic_wand(self, after_click: bool = False) -> None:
+        """Select from the last click with the current panel settings.
 
         Called on a click and again when the panel settings change; a re-run only
         happens while the image pixels are unchanged since the click.
         """
-        click = self._wand_click
+        click = self._last_wand_click
         img = self.doc.find(click["oid"]) if click else None
         if click is None or not isinstance(img, RasterImage) or img.pixels is not click["pixels"]:
             return
-        settings = dict(self.wand_settings())
-        fill_on_click = settings.pop("fill", False)
-        picked = magic_wand(img.pixels, click["x"], click["y"], **settings)
-        base = click["base"]
-        mask: np.ndarray | None
-        if click["mode"] == "add" and base is not None:
-            mask = base | picked
-        elif click["mode"] == "subtract":
-            mask = None if base is None else base & ~picked
+        settings = self.magic_wand_settings()
+        clicked_region = magic_wand_selection(img.pixels, click["x"], click["y"], **settings.selection_arguments())
+        selection_before = click["selection_before"]
+        new_selection: np.ndarray | None
+        if click["combine"] == "add" and selection_before is not None:
+            new_selection = selection_before | clicked_region
+        elif click["combine"] == "subtract":
+            new_selection = None if selection_before is None else selection_before & ~clicked_region
         else:
-            mask = picked
-        self.doc.set_selection(img, mask)
-        n = int(mask.sum()) if mask is not None else 0
-        self.status_message.emit(tr("Magic wand: {n} px selected.", n=n))
-        if fill and fill_on_click and n:
-            self.wand_fill_requested.emit()
+            new_selection = clicked_region
+        self.doc.set_selection(img, new_selection)
+        selected_count = int(new_selection.sum()) if new_selection is not None else 0
+        self.status_message.emit(tr("Magic wand: {n} px selected.", n=selected_count))
+        if after_click and settings.fill_on_click and selected_count:
+            self.fill_selection_requested.emit()
 
     # ---------------------------------------------------------- rotate, scale --
     def _press_rotate(self, p, event):

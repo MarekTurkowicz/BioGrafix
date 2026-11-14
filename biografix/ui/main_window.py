@@ -306,9 +306,9 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         self._action(m, "Restore original image", self.reset_image, "Ctrl+R",
                      "Restores the pixels as loaded (added to history, so it can be undone)", key="reset")
-        self._action(m, "Clear selection", self.clear_roi, "Ctrl+Shift+A",
+        self._action(m, "Clear selection", self.clear_region_and_selection, "Ctrl+Shift+A",
                      "Clears the region and the magic-wand selection – operations apply to the whole image again", key="clear_roi")
-        self._action(m, "Fill selection with the palette colour", self.fill_selection_now, "Shift+F5",
+        self._action(m, "Fill selection with the palette colour", self.fill_selection_with_palette_colour, "Shift+F5",
                      "Fills the selection (or region) with the colour chosen in the palette", key="fill_now")
 
         # --- View ---
@@ -499,11 +499,11 @@ class MainWindow(QMainWindow):
         self.view.files_dropped.connect(self.load_images)
         self.view.zoom_changed.connect(lambda z: self.zoom_label.setText(tr("Zoom: {percent}%", percent=f"{z * 100:.0f}")))
         self.view.status_message.connect(lambda s: self.statusBar().showMessage(s, 8000))
-        self.view.wand_settings = self.wand_panel.settings
-        self.view.wand_fill_requested.connect(self.fill_selection_now)
-        self.wand_panel.settings_changed.connect(self.view.apply_wand)
+        self.view.magic_wand_settings = self.wand_panel.current_settings
+        self.view.fill_selection_requested.connect(self.fill_selection_with_palette_colour)
+        self.wand_panel.settings_changed.connect(self.view.rerun_magic_wand)
         self.tool_actions["wand"].triggered.connect(lambda: (self.dock_wand.show(), self.dock_wand.raise_()))
-        self.wand_panel.add_actions([
+        self.wand_panel.add_selection_buttons([
             (self._operation_action(registry.get("seg.expand")), tr("Expand")),
             (self._operation_action(registry.get("seg.shrink")), tr("Shrink")),
             (self._operation_action(registry.get("seg.invert")), tr("Invert")),
@@ -588,15 +588,15 @@ class MainWindow(QMainWindow):
 
         if op.target == TARGET_SELECTION:
             self.doc.set_selection(target, op.func(target.selection, target.pixels, **values))
-            n = 0 if target.selection is None else int(target.selection.sum())
-            self.statusBar().showMessage(tr("{label}: {n} px selected.", label=tr(op.label), n=n), 8000)
+            selected_count = 0 if target.selection is None else int(target.selection.sum())
+            self.statusBar().showMessage(tr("{label}: {n} px selected.", label=tr(op.label), n=selected_count), 8000)
             return
         try:
             self.runner.run(op, values)
         except OperationError as e:
             QMessageBox.information(self, tr(op.label), str(e))
 
-    def fill_selection_now(self):
+    def fill_selection_with_palette_colour(self):
         """Fill the selection (or region, or image) with the palette colour, without a dialog."""
         op = registry.get("seg.fill")
         img = self.doc.target_image()
@@ -837,7 +837,7 @@ class MainWindow(QMainWindow):
         with self.doc.change(tr("Restore original: {name}", name=img.display_name)):
             img.set_pixels(img.original)
 
-    def clear_roi(self):
+    def clear_region_and_selection(self):
         img = self.doc.target_image()
         if img is not None and (img.roi or img.selection is not None):
             self.doc.set_roi(img, None)

@@ -19,7 +19,7 @@ from PySide6.QtCore import QObject, QThread, Signal
 
 from ..i18n import tr
 from .document import Document
-from .imaging import mask_bbox, normalize_result, paste_masked, paste_region, to_rgb
+from .imaging import bounding_box_of_mask, normalize_result, paste_region, paste_region_where_selected, to_rgb
 from .registry import TARGET_SHAPE, Operation, Report
 
 
@@ -128,18 +128,18 @@ class OperationRunner(QObject):
             raise OperationError(tr("Select an image to apply the operation to\n(load one with File → Open images…)."))
 
         roi = image.roi if op.supports_roi else None
-        mask = None
+        selection_in_roi = None
         if op.supports_roi and image.selection is not None:
             # magic-wand selection: process its bounding box, change only the selected pixels
-            roi = mask_bbox(image.selection)
-            mask = image.selection[roi[1]:roi[3], roi[0]:roi[2]]
+            roi = bounding_box_of_mask(image.selection)
+            selection_in_roi = image.selection[roi[1]:roi[3], roi[0]:roi[2]]
         rgb = to_rgb(image.pixels)
         region = rgb if roi is None else rgb[roi[1]:roi[3], roi[0]:roi[2]]
         region = np.array(region, copy=True)  # the function may modify its own copy
-        suffix = " " + tr("[selection]") if mask is not None else " " + tr("[region]") if roi else ""
+        suffix = " " + tr("[selection]") if selection_in_roi is not None else " " + tr("[region]") if roi else ""
         label = op.history_label(values) + suffix
         self._job = dict(op=op, label=label, oid=image.oid, source_pixels=image.pixels,
-                         roi=roi, mask=mask, region_shape=region.shape)
+                         roi=roi, selection_in_roi=selection_in_roi, region_shape=region.shape)
 
         def compute():
             return op.func(region, **values)
@@ -167,7 +167,7 @@ class OperationRunner(QObject):
         job, self._job, self._worker = self._job, None, None
         try:
             self._apply_image_result(job["op"], job["label"], job["oid"], job["source_pixels"],
-                                     job["roi"], job["region_shape"], result, job["mask"])
+                                     job["roi"], job["region_shape"], result, job["selection_in_roi"])
         except Exception as e:
             self.failed.emit(job["label"], tr(str(e)))
             return
@@ -178,7 +178,7 @@ class OperationRunner(QObject):
         self.failed.emit(job["label"], text)
 
     # ----------------------------------------------------------------- result --
-    def _apply_image_result(self, op, label, oid, source_pixels, roi, region_shape, result, mask=None):
+    def _apply_image_result(self, op, label, oid, source_pixels, roi, region_shape, result, selection_in_roi=None):
         new_pixels = None
         for item in _as_list(result):
             if isinstance(item, np.ndarray):
@@ -186,8 +186,8 @@ class OperationRunner(QObject):
                 if roi is not None:
                     if arr.shape[:2] != region_shape[:2]:
                         raise OperationError(tr("The operation changed the image size – it cannot be pasted into the selected region."))
-                    arr = paste_region(source_pixels, arr, roi) if mask is None \
-                        else paste_masked(source_pixels, arr, roi, mask)
+                    arr = paste_region(source_pixels, arr, roi) if selection_in_roi is None \
+                        else paste_region_where_selected(source_pixels, arr, roi, selection_in_roi)
                 new_pixels = arr
 
         if new_pixels is not None:
