@@ -1,30 +1,26 @@
 """Mean Iterative Selection."""
 
-from ._common import _apply_threshold_to_pixels, _to_gray_list
+import numpy as np
+
+from ._common import luminance_levels, threshold_luminance
 
 
-def threshold_mean_iterative(pixels, max_iter=100, eps=0.5):
+def threshold_mean_iterative(image: np.ndarray, max_iter: int = 100, eps: float = 0.5) -> np.ndarray:
     """Mean Iterative Selection: iterate T towards the mean of both class means."""
-    vals = _to_gray_list(pixels)
-    n = len(vals)
-    if n == 0:
-        return pixels[:]
-
-    # start from the global mean
-    T = sum(vals) / n
+    levels = luminance_levels(image)
+    T = int(levels.sum()) / levels.size  # start from the global mean
 
     for _ in range(max_iter):
-        g1 = [v for v in vals if v <= T]
-        g2 = [v for v in vals if v > T]
-        if not g1 or not g2:
+        lower = levels <= T
+        lower_count = int(lower.sum())
+        if lower_count in (0, levels.size):
             break
-        m1 = sum(g1) / len(g1)
-        m2 = sum(g2) / len(g2)
-        new_T = (m1 + m2) / 2.0
+        mean_lower = int(levels[lower].sum()) / lower_count
+        mean_upper = int(levels[~lower].sum()) / (levels.size - lower_count)
+        new_T = (mean_lower + mean_upper) / 2.0
         if abs(new_T - T) < eps:
             T = new_T
             break
         T = new_T
 
-    T_int = int(round(T))
-    return _apply_threshold_to_pixels(pixels, T_int)
+    return threshold_luminance(levels, int(round(T)))

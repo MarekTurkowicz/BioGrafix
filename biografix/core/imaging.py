@@ -34,18 +34,6 @@ def normalize_result(result: np.ndarray) -> np.ndarray:
     return arr
 
 
-def array_to_pixels(image: np.ndarray):
-    """Convert a (H, W, 3) array to a pixel list and its size ``(pixels, w, h)``."""
-    arr = to_rgb(image)
-    h, w = arr.shape[:2]
-    return [tuple(p) for p in arr.reshape(-1, 3).tolist()], w, h
-
-
-def pixels_to_array(pixels, w: int, h: int) -> np.ndarray:
-    """Convert a pixel list of size w × h to a (H, W, 3) uint8 array."""
-    return np.array(pixels, dtype=np.uint8).reshape(h, w, 3)
-
-
 def paste_region(full: np.ndarray, region: np.ndarray, roi) -> np.ndarray:
     """Return a copy of ``base`` with ``region`` pasted at ``roi``."""
     x0, y0, x1, y1 = roi

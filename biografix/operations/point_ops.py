@@ -5,7 +5,6 @@ import numpy as np
 from ..algorithms import point_ops as alg
 from ..core.params import ChoiceParam, FloatParam, IntParam
 from ..core.registry import operation
-from .adapters import run_on_pixels
 
 CAT = "Point operations"
 
@@ -14,25 +13,25 @@ CAT = "Point operations"
            params=[IntParam("value", "Value (negative = subtract)", 20, -255, 255)],
            description="Adds a constant to each R, G, B channel (clipped to 0–255).")
 def add(image, value):
-    return run_on_pixels(alg.add_constant, image, value)
+    return alg.add_constant(image, value)
 
 
 @operation("point.mul", CAT, "Multiply by constant", section="Arithmetic",
            params=[FloatParam("value", "Factor", 1.2, 0.0, 100.0, step=0.1)])
 def mul(image, value):
-    return run_on_pixels(alg.mul_constant, image, value)
+    return alg.mul_constant(image, value)
 
 
 @operation("point.div", CAT, "Divide by constant", section="Arithmetic",
            params=[FloatParam("value", "Divisor", 1.2, 0.001, 1000.0, step=0.1)])
 def div(image, value):
-    return run_on_pixels(alg.div_constant, image, value)
+    return alg.div_constant(image, value)
 
 
 @operation("point.brightness", CAT, "Brightness", section="Brightness and contrast",
            params=[IntParam("delta", "Brightness", 30, -255, 255)])
 def brightness(image, delta):
-    return run_on_pixels(alg.change_brightness, image, delta)
+    return alg.change_brightness(image, delta)
 
 
 @operation("point.levels", CAT, "Levels (linear scaling)", section="Brightness and contrast",
@@ -40,7 +39,7 @@ def brightness(image, delta):
                    IntParam("in_max", "Input maximum", 255, 0, 255)],
            description="The range [min, max] is stretched linearly to [0, 255].")
 def levels(image, in_min, in_max):
-    return run_on_pixels(alg.linear_color_scale, image, in_min, in_max)
+    return alg.linear_color_scale(image, in_min, in_max)
 
 
 @operation("point.grayscale", CAT, "Grayscale", section="Colour",
@@ -53,9 +52,9 @@ def levels(image, in_min, in_max):
            ])])
 def grayscale(image, mode):
     if mode == "average":
-        return run_on_pixels(alg.to_grayscale_avg, image)
+        return alg.to_grayscale_avg(image)
     if mode == "luma":
-        return run_on_pixels(alg.to_grayscale_luma, image)
+        return alg.to_grayscale_luma(image)
     gray = alg.to_grayscale(image, mode)
     return np.stack([gray] * 3, axis=-1)
 

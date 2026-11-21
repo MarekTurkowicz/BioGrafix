@@ -2,50 +2,22 @@
 
 import numpy as np
 
-from ._common import _luma
-from .compute import compute_histogram
+from ._common import gray_image, luminance_levels
 
 
-def histogram_stretch(pixels):
-    """Stretch luminance linearly so that min → 0 and max → 255; returns grayscale."""
-    hist = compute_histogram(pixels)
-    total = sum(hist)
-    if total == 0:
-        return pixels[:]
+def histogram_stretch(image: np.ndarray) -> np.ndarray:
+    """Stretch luminance linearly so that min → 0 and max → 255; returns a grayscale image."""
+    levels = luminance_levels(image)
+    level_min, level_max = int(levels.min()), int(levels.max())
+    if level_min >= level_max:
+        return gray_image(levels)  # a uniform image cannot be stretched
 
-    imin = 0
-    while imin < 256 and hist[imin] == 0:
-        imin += 1
-    imax = 255
-    while imax >= 0 and hist[imax] == 0:
-        imax -= 1
-
-    if imin >= imax:
-        # a uniform image cannot be stretched
-        gray = imin
-        return [(gray, gray, gray) for _ in pixels]
-
-    mapping = [0] * 256
-    scale = 255.0 / (imax - imin)
-    for i in range(256):
-        if i <= imin:
-            v = 0
-        elif i >= imax:
-            v = 255
-        else:
-            v = int(round((i - imin) * scale))
-        if v < 0:
-            v = 0
-        elif v > 255:
-            v = 255
-        mapping[i] = v
-
-    out = []
-    for r, g, b in pixels:
-        y = _luma(r, g, b)
-        v = mapping[y]
-        out.append((v, v, v))
-    return out
+    level = np.arange(256)
+    scale = 255.0 / (level_max - level_min)
+    lookup = np.clip(np.round((level - level_min) * scale), 0, 255)
+    lookup[level <= level_min] = 0
+    lookup[level >= level_max] = 255
+    return gray_image(lookup[levels])
 
 
 def stretch_histogram_rgb(image: np.ndarray) -> np.ndarray:

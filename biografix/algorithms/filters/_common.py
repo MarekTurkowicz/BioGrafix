@@ -1,59 +1,32 @@
-"""Helpers shared by the pixel-list filters: clamping, 1D/2D reshaping, RGB convolution."""
+"""Helpers shared by the filters: convolution with a replicated border."""
+
+import numpy as np
+
+from ..point_ops import round_to_byte  # noqa: F401  (used by the filter modules)
 
 
-def _clamp_byte(v: float) -> int:
-    v = int(round(v))
-    if v < 0:
-        return 0
-    if v > 255:
-        return 255
-    return v
+def correlate_replicated(channels: np.ndarray, kernel) -> np.ndarray:
+    """Weighted sum of the neighbourhood of every pixel, as float.
+
+    ``channels`` is (H, W) or (H, W, C); ``kernel`` is a list of rows whose centre
+    is element [kh // 2][kw // 2]. Pixels beyond the border repeat the edge pixel.
+    The kernel is applied without flipping, like the original per-pixel loop, and
+    the terms are added in the same order, so the result is identical to it.
+    """
+    kernel = [list(row) for row in kernel]
+    kh, kw = len(kernel), len(kernel[0])
+    ky, kx = kh // 2, kw // 2
+    data = np.asarray(channels, dtype=np.float64)
+    height, width = data.shape[:2]
+    pad = [(ky, kh - 1 - ky), (kx, kw - 1 - kx)] + [(0, 0)] * (data.ndim - 2)
+    padded = np.pad(data, pad, mode="edge")
+    total = np.zeros_like(data)
+    for j in range(kh):
+        for i in range(kw):
+            total += padded[j:j + height, i:i + width] * kernel[j][i]
+    return total
 
 
-def _to_2d(pixels, w, h):
-    return [pixels[y * w : (y + 1) * w] for y in range(h)]
-
-
-def _to_1d(rows):
-    out = []
-    for row in rows:
-        out.extend(row)
-    return out
-
-
-def _conv_rgb(pixels, w, h, kernel):
-    """Convolve each RGB channel with the kernel."""
-    src = _to_2d(pixels, w, h)
-    kh = len(kernel)
-    kw = len(kernel[0])
-    ky = kh // 2
-    kx = kw // 2
-
-    out = [[(0, 0, 0) for _ in range(w)] for _ in range(h)]
-
-    for y in range(h):
-        for x in range(w):
-            acc_r = acc_g = acc_b = 0.0
-            for j in range(kh):
-                for i in range(kw):
-                    yy = y + j - ky
-                    xx = x + i - kx
-                    if yy < 0:
-                        yy = 0
-                    if yy >= h:
-                        yy = h - 1
-                    if xx < 0:
-                        xx = 0
-                    if xx >= w:
-                        xx = w - 1
-                    wgt = kernel[j][i]
-                    r, g, b = src[yy][xx]
-                    acc_r += r * wgt
-                    acc_g += g * wgt
-                    acc_b += b * wgt
-            out[y][x] = (
-                _clamp_byte(acc_r),
-                _clamp_byte(acc_g),
-                _clamp_byte(acc_b),
-            )
-    return _to_1d(out)
+def convolve_rgb(image: np.ndarray, kernel) -> np.ndarray:
+    """Apply ``kernel`` to each RGB channel (replicated border) and round to uint8."""
+    return round_to_byte(correlate_replicated(np.asarray(image)[:, :, :3], kernel))

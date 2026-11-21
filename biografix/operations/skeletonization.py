@@ -32,13 +32,15 @@ def load_compiled_thinning(thinning: Callable) -> Callable:
     return thinning
 
 
-def preload_compiled_thinning() -> None:
-    """Import K3M and KMM and load their compiled code; run in a background thread at start-up."""
+def preload_compiled_code() -> None:
+    """Load every numba-compiled algorithm (K3M, KMM, watershed); run in a background thread at start-up."""
+    from ..algorithms.segmentation import watershed_segmentation
     from ..algorithms.skeletonization.k3m import k3m_thinning
     from ..algorithms.skeletonization.kmm import kmm_thinning
 
     load_compiled_thinning(k3m_thinning)
     load_compiled_thinning(kmm_thinning)
+    watershed_segmentation(np.zeros((8, 8, 3), dtype=np.uint8))
 
 
 def _thin(image, object_colour: ObjectColour, thinning: Callable, method: str):

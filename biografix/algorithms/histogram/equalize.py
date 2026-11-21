@@ -2,55 +2,21 @@
 
 import numpy as np
 
-from ._common import _luma
-from .compute import compute_histogram
+from ._common import gray_image, luminance_levels
 
 
-def histogram_equalize(pixels):
-    """Equalise the luminance histogram; returns grayscale."""
-    hist = compute_histogram(pixels)
-    total = sum(hist)
-    if total == 0:
-        return pixels[:]
+def histogram_equalize(image: np.ndarray) -> np.ndarray:
+    """Equalise the luminance histogram; returns a grayscale image."""
+    levels = luminance_levels(image)
+    cdf = np.cumsum(np.bincount(levels.ravel(), minlength=256))
+    total = int(cdf[-1])
+    cdf_min = int(cdf[cdf > 0][0])  # smallest non-zero value of the cumulative distribution
+    if cdf_min == total:
+        return gray_image(levels)  # a single-level image cannot be equalised
 
-    # cumulative distribution
-    cdf = [0] * 256
-    cumsum = 0
-    for i in range(256):
-        cumsum += hist[i]
-        cdf[i] = cumsum
-
-    # smallest non-zero CDF value
-    cdf_min = next((c for c in cdf if c > 0), 0)
-    if cdf_min == 0 or cdf[-1] == cdf_min:
-        # a single-level image cannot be equalised
-        out = []
-        for r, g, b in pixels:
-            y = _luma(r, g, b)
-            out.append((y, y, y))
-        return out
-
-    denom = total - cdf_min
-    mapping = [0] * 256
-    for i in range(256):
-        v = (cdf[i] - cdf_min) / denom
-        if v < 0:
-            v = 0.0
-        elif v > 1:
-            v = 1.0
-        val = int(round(v * 255))
-        if val < 0:
-            val = 0
-        elif val > 255:
-            val = 255
-        mapping[i] = val
-
-    out = []
-    for r, g, b in pixels:
-        y = _luma(r, g, b)
-        v = mapping[y]
-        out.append((v, v, v))
-    return out
+    share = np.clip((cdf - cdf_min) / (total - cdf_min), 0.0, 1.0)
+    lookup = np.clip(np.round(share * 255), 0, 255)
+    return gray_image(lookup[levels])
 
 
 def equalize_histogram_rgb(image: np.ndarray) -> np.ndarray:

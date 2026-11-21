@@ -1,8 +1,10 @@
-"""Convolution with a user-given kernel (pixel list)."""
+"""Convolution with a user-given kernel (replicated border)."""
 
-from ._common import _conv_rgb
+import numpy as np
+
+from ._common import convolve_rgb
 
 
-def filter_custom(pixels, w, h, kernel):
+def filter_custom(image: np.ndarray, kernel) -> np.ndarray:
     """Convolve with an arbitrary kernel given as a list of rows."""
-    return _conv_rgb(pixels, w, h, kernel)
+    return convolve_rgb(image, kernel)

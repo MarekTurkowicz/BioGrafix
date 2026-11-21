@@ -1,7 +1,6 @@
 """Segmentation and analysis operations."""
 
 from ..algorithms import color_analysis, segmentation
-from ..core.imaging import array_to_pixels
 from ..core.params import FloatParam
 from ..core.registry import Report, operation
 from ..i18n import tr
@@ -20,8 +19,7 @@ def rembg(image):
                    FloatParam("v_min", "V min", 0.2, 0.0, 1.0, step=0.05, decimals=2)],
            description="Percentage of pixels within a hue range (green by default).")
 def coverage(image, h_min, h_max, s_min, v_min):
-    pixels, _w, _h = array_to_pixels(image)
-    percent, h_min, h_max = color_analysis.color_coverage(pixels, h_min, h_max, s_min, v_min)
+    percent, h_min, h_max = color_analysis.color_coverage(image, h_min, h_max, s_min, v_min)
     return Report(
         tr("Colour coverage (H∈[{h_min}°, {h_max}°], S≥{s_min}, V≥{v_min}): {percent}%",
            h_min=f"{h_min:.1f}", h_max=f"{h_max:.1f}", s_min=f"{s_min:.2f}", v_min=f"{v_min:.2f}",

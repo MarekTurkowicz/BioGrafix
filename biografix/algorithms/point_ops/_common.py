@@ -1,17 +1,13 @@
 """Helpers shared by the point operations."""
 
-
-Color = tuple[int, int, int]
-
-
-def clamp(v: int) -> int:
-    return 0 if v < 0 else 255 if v > 255 else v
+import numpy as np
 
 
-def _clamp_byte(v: float) -> int:
-    v = int(round(v))
-    if v < 0:
-        return 0
-    if v > 255:
-        return 255
-    return v
+def round_to_byte(values: np.ndarray) -> np.ndarray:
+    """Round to the nearest integer (halves to even, like Python's ``round``) and clip to 0..255 as uint8."""
+    return np.clip(np.round(values), 0, 255).astype(np.uint8)
+
+
+def rgb_channels(image: np.ndarray) -> np.ndarray:
+    """The R, G, B channels of an (H, W, 3/4) image."""
+    return np.asarray(image)[:, :, :3]

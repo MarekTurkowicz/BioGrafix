@@ -1,12 +1,10 @@
 """Luminance histogram."""
 
-from ._common import _luma
+import numpy as np
+
+from ._common import luminance_levels
 
 
-def compute_histogram(pixels):
-    """Return a 256-bin luminance histogram of ``pixels``."""
-    hist = [0] * 256
-    for r, g, b in pixels:
-        y = _luma(r, g, b)
-        hist[y] += 1
-    return hist
+def compute_histogram(image: np.ndarray) -> np.ndarray:
+    """256-bin luminance histogram."""
+    return np.bincount(luminance_levels(image).ravel(), minlength=256)

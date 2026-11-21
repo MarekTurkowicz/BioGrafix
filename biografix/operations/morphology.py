@@ -3,7 +3,6 @@
 from ..algorithms import morphology as alg
 from ..core.params import MatrixParam
 from ..core.registry import operation
-from .adapters import run_on_pixels_wh
 
 CAT = "Morphology"
 
@@ -21,9 +20,9 @@ _THIN_DEFAULT = "-1 -1 -1\n0 1 0\n1 1 1"
 
 def _register(mode, op_id, label, default=None):
     @operation(op_id, CAT, label, params=[_se_param(default or "0 1 0\n1 1 1\n0 1 0")],
-               section="Binary image", slow=True)
+               section="Binary image")
     def run(image, se, _mode=mode):
-        return run_on_pixels_wh(alg.apply_morphology, image, se, _mode)
+        return alg.apply_morphology(image, se, _mode)
 
     return run
 
