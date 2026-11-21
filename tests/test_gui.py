@@ -318,5 +318,24 @@ class TestMagicWand(GuiTestCase):
         self.assertEqual(int(img.selection.sum()), 100)
 
 
+class TestCompareMinutiae(GuiTestCase):
+    def test_compare_marks_both_images_in_one_step(self):
+        for name, length in (("a.png", 30), ("b.png", 10)):
+            px = np.full((40, 60, 3), 255, np.uint8)
+            px[20, 10:10 + length] = 0  # a one-pixel-wide ridge: two endings
+            self.doc.add_objects([RasterImage(x=10, y=10, pixels=px, name=name)], "image")
+        steps_before = self.doc.undo_stack.count()
+        self.run_op("minutiae.compare", fingerprint_input="skeleton", remove_border=False)
+        images = self.doc.images()
+        red = (230, 30, 30)
+        for img in images:
+            self.assertTrue((img.pixels == red).all(axis=2).any())  # ending markers drawn
+        self.assertEqual(self.doc.undo_stack.count(), steps_before + 1)
+        report = self.w.log.toPlainText()
+        self.assertIn("a.png: 2 minutiae", report)
+        self.assertIn("b.png: 2 minutiae", report)
+        self.assertIn("Difference in the number of minutiae: 0", report)
+
+
 if __name__ == "__main__":
     unittest.main()

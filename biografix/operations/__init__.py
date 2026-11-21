@@ -13,6 +13,7 @@ MODULES = [
     "morphology",
     "segmentation",
     "skeletonization",
+    "minutiae",
     "analysis",
     "geometry",
 ]

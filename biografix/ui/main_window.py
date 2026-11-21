@@ -30,7 +30,7 @@ from .. import i18n
 from ..constants import APP_NAME, APP_TITLE, ORG_NAME
 from ..core import registry
 from ..core.document import Document
-from ..core.registry import TARGET_SELECTION, TARGET_SHAPE, Operation
+from ..core.registry import MIN_SCENE_IMAGES, TARGET_IMAGE, TARGET_SCENE, TARGET_SELECTION, TARGET_SHAPE, Operation
 from ..core.runner import OperationError, OperationRunner
 from ..i18n import tr
 from ..io.images import OPEN_FILTER, SAVE_FILTER, load_image, save_image
@@ -57,6 +57,7 @@ TASKS = [
     ("Task 1 – Thresholding", ["bin.manual", "bin.niblack", "bin.sauvola", "bin.phansalkar", "bin.otsu"]),
     ("Task 2 – Segmentation", ["seg.fill", "seg.expand", "seg.shrink", "seg.invert", "seg.watershed"]),
     ("Task 3 – Skeletonization", ["skel.k3m", "skel.zhang_suen", "skel.kmm"]),
+    ("Task 4 – Feature extraction", ["minutiae.crossing_number", "minutiae.compare"]),
 ]
 
 
@@ -570,14 +571,20 @@ class MainWindow(QMainWindow):
             if target is None or target.selection is None:
                 QMessageBox.information(self, tr(op.label), tr("Select pixels with the Magic wand first."))
                 return
+        elif op.target == TARGET_SCENE:
+            target = None
+            if len(self.doc.images()) < MIN_SCENE_IMAGES:  # checked before the parameter dialog opens
+                QMessageBox.information(self, tr(op.label), tr("Load at least {n} images to compare (File → Open images…).",
+                                                               n=MIN_SCENE_IMAGES))
+                return
         else:
             target = self.doc.target_image()
             if target is None:
                 QMessageBox.information(self, tr(op.label), tr("Select an image to apply the operation to\n(load one with File → Open images…)."))
                 return
-            if self.runner.busy:
-                self.statusBar().showMessage(tr("Please wait – the previous operation is still running."), 5000)
-                return
+        if op.target in (TARGET_IMAGE, TARGET_SCENE) and self.runner.busy:
+            self.statusBar().showMessage(tr("Please wait – the previous operation is still running."), 5000)
+            return
 
         values = {}
         if op.params:
@@ -669,8 +676,7 @@ class MainWindow(QMainWindow):
 
     def _guard_remove(self, oids) -> bool:
         """Deletion veto: ask before deleting an image that is being processed."""
-        busy = self.runner.busy_oid
-        if busy is None or busy not in oids:
+        if not set(self.runner.busy_oids) & set(oids):
             return True
         return self._ask_busy("Image is being processed", "Cancel and delete")
 

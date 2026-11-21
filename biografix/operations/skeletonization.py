@@ -24,7 +24,7 @@ OBJECT_COLOUR = ChoiceParam("object_colour", "Object pixels", ObjectColour.BLACK
 ], help="The image is binarized at gray level 128 – threshold it first.")
 
 
-def _load_compiled(thinning: Callable) -> Callable:
+def load_compiled_thinning(thinning: Callable) -> Callable:
     """Run ``thinning`` once on a tiny image so that numba loads or compiles it before timing."""
     warm_up = np.zeros((5, 5), dtype=bool)
     warm_up[1:4, 1:4] = True
@@ -37,8 +37,8 @@ def preload_compiled_thinning() -> None:
     from ..algorithms.skeletonization.k3m import k3m_thinning
     from ..algorithms.skeletonization.kmm import kmm_thinning
 
-    _load_compiled(k3m_thinning)
-    _load_compiled(kmm_thinning)
+    load_compiled_thinning(k3m_thinning)
+    load_compiled_thinning(kmm_thinning)
 
 
 def _thin(image, object_colour: ObjectColour, thinning: Callable, method: str):
@@ -57,7 +57,7 @@ def _thin(image, object_colour: ObjectColour, thinning: Callable, method: str):
 def k3m(image, object_colour):
     from ..algorithms.skeletonization.k3m import k3m_thinning  # loads numba, which takes a few seconds
 
-    return _thin(image, object_colour, _load_compiled(k3m_thinning), "K3M")
+    return _thin(image, object_colour, load_compiled_thinning(k3m_thinning), "K3M")
 
 
 @operation("skel.zhang_suen", CAT, "Zhang-Suen", section=SECTION, params=[OBJECT_COLOUR],
@@ -71,4 +71,4 @@ def zhang_suen(image, object_colour):
 def kmm(image, object_colour):
     from ..algorithms.skeletonization.kmm import kmm_thinning  # loads numba, which takes a few seconds
 
-    return _thin(image, object_colour, _load_compiled(kmm_thinning), "KMM")
+    return _thin(image, object_colour, load_compiled_thinning(kmm_thinning), "KMM")
