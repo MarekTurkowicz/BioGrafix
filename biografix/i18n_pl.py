@@ -191,7 +191,7 @@ PL = {
     "Luminance histogram (256 bins).": "Histogram luminancji (256 przedziałów).",
     "Luminance – white if ≥ T": "Luminancja – biały gdy ≥ T",
     "Manual threshold": "Progowa (ręczna)",
-    "Manual – replicated border (slow)": "Ręczna – brzeg powielony (wolna)",
+    "Manual – replicated border": "Ręczna – brzeg powielony",
     "Mean (box blur)": "Uśredniający (box blur)",
     "Median": "Medianowy",
     "Method": "Metoda",

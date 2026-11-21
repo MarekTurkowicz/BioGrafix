@@ -5,9 +5,9 @@ import numpy as np
 from .arithmetic import add_constant
 
 
-def change_brightness(pixels, delta):
+def change_brightness(image: np.ndarray, delta: int) -> np.ndarray:
     """Change brightness by adding a constant."""
-    return add_constant(pixels, delta)
+    return add_constant(image, delta)
 
 
 def brighten(image: np.ndarray) -> np.ndarray:

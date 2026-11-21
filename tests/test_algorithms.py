@@ -9,7 +9,7 @@ import numpy as np
 from biografix.algorithms import geometry, minutiae, segmentation, skeletonization, thresholding
 from biografix.algorithms.color_models import cmyk_to_rgb, rgb_to_cmyk
 from biografix.algorithms.skeletonization import k3m, kmm
-from biografix.core.imaging import array_to_pixels, paste_region, paste_region_where_selected, pixels_to_array, to_rgb
+from biografix.core.imaging import paste_region, paste_region_where_selected, to_rgb
 from biografix.core.params import IntParam, MatrixParam
 from biografix.core.registry import REGISTRY, TARGET_IMAGE
 from biografix.operations import load_all
@@ -89,11 +89,6 @@ class TestGeometry(unittest.TestCase):
 
 
 class TestFormatsAndParams(unittest.TestCase):
-    def test_pixels_roundtrip(self):
-        img = sample_image(5, 7)
-        pixels, w, h = array_to_pixels(img)
-        self.assertTrue(np.array_equal(pixels_to_array(pixels, w, h), img))
-
     def test_rgba_composited_on_white(self):
         rgba = np.zeros((1, 1, 4), np.uint8)  # black, fully transparent
         self.assertTrue((to_rgb(rgba) == 255).all())

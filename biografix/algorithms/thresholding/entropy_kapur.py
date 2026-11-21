@@ -2,22 +2,19 @@
 
 import math
 
-from ._common import _apply_threshold_to_pixels, _to_gray_list
+import numpy as np
+
+from ._common import luminance_levels, threshold_luminance
 
 
-def threshold_entropy(pixels):
-    """Kapur's method: maximise the sum of background and object entropies."""
-    vals = _to_gray_list(pixels)
-    n = len(vals)
-    if n == 0:
-        return pixels[:]
+def threshold_entropy(image: np.ndarray) -> np.ndarray:
+    """Kapur's method: maximise the sum of background and object entropies.
 
-    hist = [0] * 256
-    for v in vals:
-        hist[v] += 1
-
-    total = float(n)
-    p = [h / total for h in hist]
+    The search runs over the 256-bin histogram, so its cost does not depend on the image size.
+    """
+    levels = luminance_levels(image)
+    total = float(levels.size)
+    p = [h / total for h in np.bincount(levels.ravel(), minlength=256).tolist()]
 
     best_T = 0
     best_H = -1e9
@@ -46,4 +43,4 @@ def threshold_entropy(pixels):
             best_H = H
             best_T = T
 
-    return _apply_threshold_to_pixels(pixels, best_T)
+    return threshold_luminance(levels, best_T)

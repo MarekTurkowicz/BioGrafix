@@ -57,7 +57,7 @@ def invert_selection(mask, image):
     return ~mask
 
 
-@operation("seg.watershed", CAT, "Watershed", section=REGIONS, slow=True,
+@operation("seg.watershed", CAT, "Watershed", section=REGIONS,
            params=[IntParam("smoothing_passes", "Smoothing (3×3 mean passes)", 2, 0, 10),
                    FloatParam("marker_percent", "Markers: flattest pixels [%]", 15.0, 1.0, 60.0, step=1.0, decimals=1),
                    IntParam("min_marker_size", "Minimum marker size [px]", 20, 1, 10000)],

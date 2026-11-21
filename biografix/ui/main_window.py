@@ -35,7 +35,7 @@ from ..core.runner import OperationError, OperationRunner
 from ..i18n import tr
 from ..io.images import OPEN_FILTER, SAVE_FILTER, load_image, save_image
 from ..operations import load_all
-from ..operations.skeletonization import preload_compiled_thinning
+from ..operations.skeletonization import preload_compiled_code
 from ..scene.objects import RasterImage
 from ..scene.serialization import load_scene, save_scene
 from . import centering, file_dialogs, theme
@@ -159,8 +159,8 @@ class MainWindow(QMainWindow):
         self._initial_geometry()
         self._update_title()
         self.view.set_tool("select")
-        # numba needs several seconds to load; do it now so the first K3M / KMM run is fast
-        threading.Thread(target=preload_compiled_thinning, name="numba-preload", daemon=True).start()
+        # numba needs several seconds to load; do it now so the first K3M / KMM / watershed run is fast
+        threading.Thread(target=preload_compiled_code, name="numba-preload", daemon=True).start()
 
     # ========================================================= UI construction ==
     def _build_docks(self):

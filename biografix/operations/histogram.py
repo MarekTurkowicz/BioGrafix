@@ -4,10 +4,8 @@ import numpy as np
 from matplotlib.figure import Figure
 
 from ..algorithms import histogram as alg
-from ..core.imaging import array_to_pixels
 from ..core.registry import operation
 from ..i18n import tr
-from .adapters import run_on_pixels
 
 CAT = "Histogram"
 
@@ -15,14 +13,13 @@ CAT = "Histogram"
 @operation("hist.show_luma", CAT, "Show luminance histogram", section="Charts",
            description="Luminance histogram (256 bins).")
 def show_luma(image):
-    pixels, _w, _h = array_to_pixels(image)
-    hist = alg.compute_histogram(pixels)
+    hist = alg.compute_histogram(image)
     fig = Figure(figsize=(7, 3.2), layout="constrained")
     ax = fig.add_subplot()
     ax.bar(range(256), hist, width=1.0, color="#444444")
     ax.set_xlim(-0.5, 255.5)
     ax.set_title(tr("Luminance histogram"))
-    ax.text(0.01, 0.95, f"N = {sum(hist)}", transform=ax.transAxes, va="top")
+    ax.text(0.01, 0.95, f"N = {int(hist.sum())}", transform=ax.transAxes, va="top")
     return fig
 
 
@@ -46,13 +43,13 @@ def show_rgb(image):
 @operation("hist.stretch_luma", CAT, "Stretch histogram (luminance)", section="On luminance",
            description="The result is grayscale.")
 def stretch_luma(image):
-    return run_on_pixels(alg.histogram_stretch, image)
+    return alg.histogram_stretch(image)
 
 
 @operation("hist.equalize_luma", CAT, "Equalize histogram (luminance)", section="On luminance",
            description="The result is grayscale.")
 def equalize_luma(image):
-    return run_on_pixels(alg.histogram_equalize, image)
+    return alg.histogram_equalize(image)
 
 
 @operation("hist.stretch_rgb", CAT, "Stretch histogram (each RGB channel)", section="On RGB channels")

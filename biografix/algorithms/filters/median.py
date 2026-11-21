@@ -1,47 +1,28 @@
-"""Median filter (pure Python and scipy versions)."""
+"""Median filter (numpy and scipy versions)."""
 
 import numpy as np
+from numpy.lib.stride_tricks import sliding_window_view
 from scipy.signal import medfilt
 
-from ._common import _to_1d, _to_2d
+MAX_WINDOW_ELEMENTS = 4_000_000  # rows are processed in chunks so the window copies stay small
 
 
-def filter_median(pixels, w, h, size=3):
-    """Median filter."""
+def filter_median(image: np.ndarray, size: int = 3) -> np.ndarray:
+    """Median of the size × size neighbourhood of each RGB channel (replicated border)."""
     if size % 2 == 0 or size < 1:
         raise ValueError("The kernel size must be odd and >= 1.")
-
-    src = _to_2d(pixels, w, h)
-    r = size // 2
-    out = [[(0, 0, 0) for _ in range(w)] for _ in range(h)]
-
-    for y in range(h):
-        for x in range(w):
-            neigh_r = []
-            neigh_g = []
-            neigh_b = []
-            for j in range(-r, r + 1):
-                for i in range(-r, r + 1):
-                    yy = y + j
-                    xx = x + i
-                    if yy < 0:
-                        yy = 0
-                    if yy >= h:
-                        yy = h - 1
-                    if xx < 0:
-                        xx = 0
-                    if xx >= w:
-                        xx = w - 1
-                    rr, gg, bb = src[yy][xx]
-                    neigh_r.append(rr)
-                    neigh_g.append(gg)
-                    neigh_b.append(bb)
-            neigh_r.sort()
-            neigh_g.sort()
-            neigh_b.sort()
-            m_idx = len(neigh_r) // 2
-            out[y][x] = (neigh_r[m_idx], neigh_g[m_idx], neigh_b[m_idx])
-    return _to_1d(out)
+    rgb = np.asarray(image)[:, :, :3]
+    height, width = rgb.shape[:2]
+    radius = size // 2
+    middle = size * size // 2
+    padded = np.pad(rgb, ((radius, radius), (radius, radius), (0, 0)), mode="edge")
+    windows = sliding_window_view(padded, (size, size), axis=(0, 1))  # (H, W, 3, size, size), no copy
+    out = np.empty_like(rgb)
+    rows_per_chunk = max(1, MAX_WINDOW_ELEMENTS // (width * 3 * size * size))
+    for top in range(0, height, rows_per_chunk):
+        chunk = windows[top:top + rows_per_chunk].reshape(-1, width, 3, size * size)
+        out[top:top + rows_per_chunk] = np.partition(chunk, middle, axis=-1)[..., middle]
+    return out
 
 
 def median_scipy(image: np.ndarray, size: int = 5) -> np.ndarray:

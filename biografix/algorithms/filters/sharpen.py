@@ -1,13 +1,16 @@
 """High-pass sharpening filter."""
 
-from ._common import _conv_rgb
+import numpy as np
+
+from ._common import convolve_rgb
+
+SHARPEN_KERNEL = [
+    [0, -1, 0],
+    [-1, 5, -1],
+    [0, -1, 0],
+]
 
 
-def filter_sharpen(pixels, w, h):
+def filter_sharpen(image: np.ndarray) -> np.ndarray:
     """High-pass sharpening filter."""
-    kernel = [
-        [0, -1, 0],
-        [-1, 5, -1],
-        [0, -1, 0],
-    ]
-    return _conv_rgb(pixels, w, h, kernel)
+    return convolve_rgb(image, SHARPEN_KERNEL)

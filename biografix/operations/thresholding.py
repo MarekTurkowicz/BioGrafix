@@ -4,7 +4,6 @@ from ..algorithms import thresholding as alg
 from ..core.params import ChoiceParam, FloatParam, IntParam
 from ..core.registry import Report, operation
 from ..i18n import tr
-from .adapters import run_on_pixels
 
 CAT = "Thresholding"
 GLOBAL = "Global thresholds"
@@ -22,7 +21,7 @@ WINDOW = IntParam("window_size", "Window size (odd)", 15, 3, 301, odd=True,
                    ])])
 def manual(image, threshold, variant):
     if variant == "luma":
-        return run_on_pixels(alg.threshold_manual, image, threshold)
+        return alg.threshold_manual(image, threshold)
     return alg.manual_threshold(image, threshold)
 
 
@@ -37,17 +36,17 @@ def otsu(image):
 @operation("bin.percent_black", CAT, "Percent Black", section=GLOBAL,
            params=[FloatParam("percent_black", "Percentage of black pixels", 50.0, 0.0, 100.0, step=1.0, decimals=1)])
 def percent_black(image, percent_black):
-    return run_on_pixels(alg.threshold_percent_black, image, percent_black)
+    return alg.threshold_percent_black(image, percent_black)
 
 
 @operation("bin.mean_iterative", CAT, "Mean Iterative Selection", section=GLOBAL)
 def mean_iterative(image):
-    return run_on_pixels(alg.threshold_mean_iterative, image)
+    return alg.threshold_mean_iterative(image)
 
 
 @operation("bin.entropy", CAT, "Entropy (Kapur)", section=GLOBAL)
 def entropy(image):
-    return run_on_pixels(alg.threshold_entropy, image)
+    return alg.threshold_entropy(image)
 
 
 @operation("bin.niblack", CAT, "Niblack", section=LOCAL,

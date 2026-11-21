@@ -3,29 +3,12 @@
 import numpy as np
 from scipy.ndimage import uniform_filter
 
-
-def _luma(r, g, b):
-    y = 0.299 * r + 0.587 * g + 0.114 * b
-    if y < 0:
-        y = 0
-    elif y > 255:
-        y = 255
-    return int(round(y))
+from ..point_ops import luminance_levels  # noqa: F401  (used by the luminance methods)
 
 
-def _to_gray_list(pixels):
-    """Return the luminance (0..255) of every pixel."""
-    return [_luma(r, g, b) for (r, g, b) in pixels]
-
-
-def _apply_threshold_to_pixels(pixels, T):
-    """Apply threshold T: luminance below T becomes black, the rest white."""
-    out = []
-    for r, g, b in pixels:
-        y = _luma(r, g, b)
-        v = 0 if y < T else 255
-        out.append((v, v, v))
-    return out
+def threshold_luminance(levels: np.ndarray, threshold: int) -> np.ndarray:
+    """Luminance below ``threshold`` becomes black, the rest white (RGB image)."""
+    return binary_to_rgb(np.where(levels < threshold, 0, 255).astype(np.uint8))
 
 
 def _gray_average(image: np.ndarray) -> np.ndarray:
