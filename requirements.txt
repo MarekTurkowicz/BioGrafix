@@ -7,3 +7,4 @@ scipy==1.18.1
 rembg==2.0.85
 onnxruntime==1.31.0
 pydantic==2.14.1
+numba==0.68.0          # compiles the sequential thinning loops (K3M, KMM)
