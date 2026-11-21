@@ -37,8 +37,9 @@ CATEGORY_ORDER = [
     "Geometry",
 ]
 
-TARGET_IMAGE = "image"   # operates on the selected image
-TARGET_SHAPE = "shape"   # operates on the selected vector shape
+TARGET_IMAGE = "image"          # operates on the selected image
+TARGET_SHAPE = "shape"          # operates on the selected vector shape
+TARGET_SELECTION = "selection"  # changes the magic-wand selection: f(mask, image, **values) -> mask
 
 
 @dataclass

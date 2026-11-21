@@ -29,7 +29,7 @@ from .. import i18n
 from ..constants import APP_NAME, APP_TITLE, ORG_NAME
 from ..core import registry
 from ..core.document import Document
-from ..core.registry import TARGET_SHAPE, Operation
+from ..core.registry import TARGET_SELECTION, TARGET_SHAPE, Operation
 from ..core.runner import OperationError, OperationRunner
 from ..i18n import tr
 from ..io.images import OPEN_FILTER, SAVE_FILTER, load_image, save_image
@@ -42,6 +42,7 @@ from .dialogs import FigureWindow, MarkdownDialog, ParamsDialog
 from .palette import ColorPalette
 from .panels import ObjectsPanel, PropertiesPanel
 from .ribbon import ActionButton, Ribbon, action_tooltip
+from .wand_panel import WandPanel
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCENE_FILTER = "BioGrafix scene (*.json)"
@@ -52,6 +53,7 @@ DEMO_IMAGES = [os.path.join(RESOURCES, name) for name in ("portrait.png", "finge
 # "More" tab: one group of tiles per course assignment
 TASKS = [
     ("Task 1 – Thresholding", ["bin.manual", "bin.niblack", "bin.sauvola", "bin.phansalkar", "bin.otsu"]),
+    ("Task 2 – Segmentation", ["seg.fill", "seg.expand", "seg.shrink", "seg.invert", "seg.watershed"]),
 ]
 
 
@@ -69,7 +71,7 @@ QUICK_BAR = [
     [("load", "Open images"), ("demo", "Load demo"), ("open_scene", "Open scene"),
      ("save_scene", "Save scene"), ("save_image", "Save image")],
     [("undo", "↶ Undo"), ("redo", "↷ Redo"), ("reset", "Restore original")],
-    [("roi_tool", "Select region"), ("clear_roi", "Clear region")],
+    [("roi_tool", "Select region"), ("wand_tool", "Magic wand"), ("clear_roi", "Clear selection")],
     [("fit", "Fit"), ("zoom100", "100%")],
 ]
 
@@ -92,6 +94,7 @@ SHORTCUTS = [
 HELP_NOTES = [
     "Images can also be **dragged from the file manager** onto the canvas.",
     "**Operations** (ribbon tiles or the menu) apply to the selected image. If the image has a **region** selected (Image region tool), the operation only affects that region.",
+    "The **Magic wand** (W) selects pixels similar to the clicked one; its settings are in the **Magic wand** panel. Operations then change only the selected pixels.",
     "Long computations run in the background – the window stays responsive and the status bar shows progress.",
 ]
 
@@ -166,9 +169,12 @@ class MainWindow(QMainWindow):
         self.dock_objects = self._add_dock("Objects", self.objects_panel, Qt.DockWidgetArea.RightDockWidgetArea)
         self.dock_props = self._add_dock("Properties", self.properties_panel, Qt.DockWidgetArea.RightDockWidgetArea)
         self.dock_history = self._add_dock("History", self.history_view, Qt.DockWidgetArea.RightDockWidgetArea)
+        self.wand_panel = WandPanel(self.doc)
+        self.dock_wand = self._add_dock("Magic wand", self.wand_panel, Qt.DockWidgetArea.RightDockWidgetArea)
         self.history_view.setToolTip(tr("Click a step to return to that state (Ctrl+Z / Ctrl+Y)"))
         self.dock_log = self._add_dock("Results", self.log, Qt.DockWidgetArea.BottomDockWidgetArea)
         self.tabifyDockWidget(self.dock_props, self.dock_history)
+        self.tabifyDockWidget(self.dock_props, self.dock_wand)
         self.dock_props.raise_()
         self.resizeDocks([self.dock_objects], [380], Qt.Orientation.Horizontal)
         self.resizeDocks([self.dock_log], [130], Qt.Orientation.Vertical)
@@ -222,13 +228,13 @@ class MainWindow(QMainWindow):
         self.tool_actions["select"].setChecked(True)
 
         tb.addSeparator()
-        self.palette = ColorPalette()
-        self.palette.color_chosen.connect(self._on_color_chosen)
-        self.palette.width_chosen.connect(self._on_width_chosen)
-        tb.addWidget(self.palette)
-        self.view.draw_color = self.palette.color
-        self.view.draw_width = self.palette.pen_width
-        self.properties_panel.color_provider = lambda: (self.palette.color, self.palette.pen_width)
+        self.color_palette = ColorPalette()
+        self.color_palette.color_chosen.connect(self._on_color_chosen)
+        self.color_palette.width_chosen.connect(self._on_width_chosen)
+        tb.addWidget(self.color_palette)
+        self.view.draw_color = self.color_palette.color
+        self.view.draw_width = self.color_palette.pen_width
+        self.properties_panel.color_provider = lambda: (self.color_palette.color, self.color_palette.pen_width)
 
     def _on_color_chosen(self, color: str):
         """Use the palette colour for new shapes and apply it to the selected shape."""
@@ -300,7 +306,10 @@ class MainWindow(QMainWindow):
         m.addSeparator()
         self._action(m, "Restore original image", self.reset_image, "Ctrl+R",
                      "Restores the pixels as loaded (added to history, so it can be undone)", key="reset")
-        self._action(m, "Clear region selection", self.clear_roi, "Ctrl+Shift+A", "Operations apply to the whole image again", key="clear_roi")
+        self._action(m, "Clear selection", self.clear_region_and_selection, "Ctrl+Shift+A",
+                     "Clears the region and the magic-wand selection – operations apply to the whole image again", key="clear_roi")
+        self._action(m, "Fill selection with the palette colour", self.fill_selection_with_palette_colour, "Shift+F5",
+                     "Fills the selection (or region) with the colour chosen in the palette", key="fill_now")
 
         # --- View ---
         m = mb.addMenu(tr("&View"))
@@ -414,6 +423,7 @@ class MainWindow(QMainWindow):
         bar.setMovable(False)
         self.addToolBar(Qt.ToolBarArea.TopToolBarArea, bar)
         self.act["roi_tool"] = self.tool_actions["roi"]
+        self.act["wand_tool"] = self.tool_actions["wand"]
         for i, group in enumerate(QUICK_BAR):
             if i:
                 bar.addSeparator()
@@ -489,6 +499,17 @@ class MainWindow(QMainWindow):
         self.view.files_dropped.connect(self.load_images)
         self.view.zoom_changed.connect(lambda z: self.zoom_label.setText(tr("Zoom: {percent}%", percent=f"{z * 100:.0f}")))
         self.view.status_message.connect(lambda s: self.statusBar().showMessage(s, 8000))
+        self.view.magic_wand_settings = self.wand_panel.current_settings
+        self.view.fill_selection_requested.connect(self.fill_selection_with_palette_colour)
+        self.wand_panel.settings_changed.connect(self.view.rerun_magic_wand)
+        self.tool_actions["wand"].triggered.connect(lambda: (self.dock_wand.show(), self.dock_wand.raise_()))
+        self.wand_panel.add_selection_buttons([
+            (self._operation_action(registry.get("seg.expand")), tr("Expand")),
+            (self._operation_action(registry.get("seg.shrink")), tr("Shrink")),
+            (self._operation_action(registry.get("seg.invert")), tr("Invert")),
+            (self.act["fill_now"], tr("Fill")),
+            (self.act["clear_roi"], tr("Clear")),
+        ])
         self.objects_panel.focus_requested.connect(self.view.focus_object)
         self.doc.undo_stack.cleanChanged.connect(self._update_title)
         self.doc.undo_stack.indexChanged.connect(self._update_title)
@@ -539,6 +560,11 @@ class MainWindow(QMainWindow):
                 kinds = ", ".join(op.shape_kinds) or tr("a shape")
                 QMessageBox.information(self, tr(op.label), tr("Select a shape ({kinds}) to apply the operation to.", kinds=kinds))
                 return
+        elif op.target == TARGET_SELECTION:
+            target = self.doc.target_image()
+            if target is None or target.selection is None:
+                QMessageBox.information(self, tr(op.label), tr("Select pixels with the Magic wand first."))
+                return
         else:
             target = self.doc.target_image()
             if target is None:
@@ -553,15 +579,31 @@ class MainWindow(QMainWindow):
             initial = {p.name: p.default for p in op.params}
             initial.update(self._param_memory.get(op.id, {}))
             if op.dynamic_defaults:
-                initial.update(op.dynamic_defaults(target, {"pivot": self.view.pivot}))
+                initial.update(op.dynamic_defaults(target, {"pivot": self.view.pivot, "color": self.color_palette.color}))
             dlg = ParamsDialog(op, initial, self)
             if dlg.exec() != ParamsDialog.DialogCode.Accepted:
                 return
             self._param_memory[op.id] = dlg.raw
             values = dlg.values
 
+        if op.target == TARGET_SELECTION:
+            self.doc.set_selection(target, op.func(target.selection, target.pixels, **values))
+            selected_count = 0 if target.selection is None else int(target.selection.sum())
+            self.statusBar().showMessage(tr("{label}: {n} px selected.", label=tr(op.label), n=selected_count), 8000)
+            return
         try:
             self.runner.run(op, values)
+        except OperationError as e:
+            QMessageBox.information(self, tr(op.label), str(e))
+
+    def fill_selection_with_palette_colour(self):
+        """Fill the selection (or region, or image) with the palette colour, without a dialog."""
+        op = registry.get("seg.fill")
+        img = self.doc.target_image()
+        if img is None or self.runner.busy or op.dynamic_defaults is None:
+            return
+        try:
+            self.runner.run(op, op.dynamic_defaults(img, {"color": self.color_palette.color}))
         except OperationError as e:
             QMessageBox.information(self, tr(op.label), str(e))
 
@@ -795,10 +837,11 @@ class MainWindow(QMainWindow):
         with self.doc.change(tr("Restore original: {name}", name=img.display_name)):
             img.set_pixels(img.original)
 
-    def clear_roi(self):
+    def clear_region_and_selection(self):
         img = self.doc.target_image()
-        if img is not None and img.roi:
+        if img is not None and (img.roi or img.selection is not None):
             self.doc.set_roi(img, None)
+            self.doc.set_selection(img, None)
 
     # ================================================================== tools ==
     def _open_tool(self, key):

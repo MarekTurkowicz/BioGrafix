@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from typing import Any
 
+import numpy as np
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QImage, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QGraphicsItem, QStyleOptionGraphicsItem
@@ -13,6 +14,9 @@ from ...constants import COL_ROI
 from ...scene.objects import BezierShape, PolygonShape, RasterImage, SceneObject
 from .. import theme
 from ..qt_image import array_to_qimage
+
+SELECTION_FILL = (0, 160, 255, 70)   # RGBA tint of selected pixels
+SELECTION_EDGE = (0, 160, 255, 255)  # opaque selection border
 
 PIXEL_VALUES_MIN_PX = 44   # on-screen pixel size above which pixel values are drawn
 PIXEL_VALUES_MAX_COUNT = 2500
@@ -33,6 +37,8 @@ class ObjectItem(QGraphicsItem):
         self.view = view
         self._qimage: Any = None
         self._qimage_key: Any = None
+        self._selection_overlay_image: Any = None
+        self._selection_overlay_key: Any = None
         self._points_key = None
         self._points_poly = None
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemUsesExtendedStyleOption, True)
@@ -178,6 +184,12 @@ class ObjectItem(QGraphicsItem):
             painter.setPen(cosmetic_pen(COL_ROI, 1, Qt.PenStyle.DashLine))
             painter.drawRect(rect)
 
+        if obj.selection is not None:
+            if self._selection_overlay_key != id(obj.selection):
+                self._selection_overlay_key = id(obj.selection)
+                self._selection_overlay_image = array_to_qimage(selection_overlay_rgba(obj.selection))
+            painter.drawImage(target, self._selection_overlay_image)
+
     def _paint_pixel_values(self, painter, option, obj: RasterImage):
         """Draw the RGB value on every visible pixel at high zoom."""
         lod = self._lod(painter)
@@ -211,3 +223,14 @@ class ObjectItem(QGraphicsItem):
                 text = str(r) if r == g == b else f"{r}\n{g}\n{b}"  # gray pixel: a single value
                 painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, text)
         painter.restore()
+
+
+def selection_overlay_rgba(mask: np.ndarray) -> np.ndarray:
+    """RGBA overlay of a selection: tinted inside, opaque on the border pixels."""
+    padded = np.pad(mask, 1, constant_values=False)
+    all_four_neighbours_selected = padded[:-2, 1:-1] & padded[2:, 1:-1] & padded[1:-1, :-2] & padded[1:-1, 2:]
+    border = mask & ~all_four_neighbours_selected
+    overlay = np.zeros(mask.shape + (4,), dtype=np.uint8)
+    overlay[mask] = SELECTION_FILL
+    overlay[border] = SELECTION_EDGE
+    return overlay

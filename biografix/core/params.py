@@ -75,9 +75,11 @@ class ChoiceParam(Param):
             self.default = self.choices[0][0]
 
     def validate(self, value):
-        if value not in [c[0] for c in self.choices]:
-            raise ValueError(tr("{label}: invalid value {value}.", label=tr(self.label), value=repr(value)))
-        return value
+        """Return the matching choice value itself (e.g. an enum member, not its plain string)."""
+        for choice_value, _label in self.choices:
+            if choice_value == value:
+                return choice_value
+        raise ValueError(tr("{label}: invalid value {value}.", label=tr(self.label), value=repr(value)))
 
     def label_for(self, value) -> str:
         return next((tr(lbl) for v, lbl in self.choices if v == value), str(value))
