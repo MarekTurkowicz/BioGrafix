@@ -16,6 +16,7 @@ from biografix.core import registry  # noqa: E402
 from biografix.scene.objects import BezierShape, LineShape, PolygonShape, RasterImage  # noqa: E402
 from biografix.scene.serialization import load_scene, save_scene  # noqa: E402
 from biografix.ui.main_window import MainWindow  # noqa: E402
+from tests.synthetic import synthetic_print  # noqa: E402
 
 app = QApplication.instance() or QApplication([])
 L, NB = Qt.MouseButton.LeftButton, Qt.MouseButton.NoButton
@@ -335,6 +336,30 @@ class TestCompareMinutiae(GuiTestCase):
         self.assertIn("a.png: 2 minutiae", report)
         self.assertIn("b.png: 2 minutiae", report)
         self.assertIn("Difference in the number of minutiae: 0", report)
+
+
+class TestVerificationAndIdentification(GuiTestCase):
+    def add_prints(self, prints):
+        for name, gray in prints:
+            self.doc.add_objects([RasterImage(x=10, y=10, pixels=np.stack([gray] * 3, axis=-1), name=name)], "image")
+
+    def test_verify_two_impressions(self):
+        self.add_prints([("101_1.png", synthetic_print(1)), ("101_2.png", synthetic_print(1, rotation_deg=12))])
+        self.run_op("verify.same_finger")
+        report = self.w.log.toPlainText()
+        self.assertIn("Decision: SAME FINGER", report)
+        green = (20, 160, 40)
+        for img in self.doc.images():
+            self.assertTrue((img.pixels == green).all(axis=2).any())  # paired minutiae drawn
+
+    def test_identify_the_selected_print(self):
+        self.add_prints([("101_1.png", synthetic_print(1)), ("102_1.png", synthetic_print(2)),
+                         ("103_1.png", synthetic_print(3)), ("query.png", synthetic_print(2, rotation_deg=-10))])
+        self.doc.select(self.doc.images()[-1].oid)
+        self.run_op("verify.identify")
+        report = self.w.log.toPlainText()
+        self.assertIn("Identified: person 102 (102_1.png)", report)
+        self.assertIn("1. 102_1.png", report)
 
 
 if __name__ == "__main__":

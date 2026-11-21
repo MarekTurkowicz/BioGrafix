@@ -7,4 +7,4 @@
 
 from .border import fill_holes, fingerprint_area, remove_border_minutiae
 from .crossing_number import COUNTED_TYPES, Minutia, MinutiaType, crossing_numbers, find_minutiae, minutia_type
-from .drawing import MINUTIA_COLOURS, REMOVED_COLOUR, draw_minutiae
+from .drawing import MINUTIA_COLOURS, REMOVED_COLOUR, draw_markers, draw_minutiae

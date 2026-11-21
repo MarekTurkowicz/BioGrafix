@@ -98,7 +98,7 @@ def crossing_number(image, fingerprint_input, remove_border):
 @operation("minutiae.compare", CAT, "Compare minutiae", section=SECTION, target=TARGET_SCENE,
            params=[INPUT, REMOVE_BORDER],
            description="Finds and highlights the minutiae on every image in the scene\nand lists the number of minutiae of each fingerprint side by side.")
-def compare(images, names, fingerprint_input, remove_border):
+def compare(images, names, _query_index, fingerprint_input, remove_border):
     drawn, lines, totals = [], [], []
     for image, name in zip(images, names, strict=True):
         skeleton, kept, removed = extract_minutiae(image, fingerprint_input, remove_border)

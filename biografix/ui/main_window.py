@@ -58,6 +58,7 @@ TASKS = [
     ("Task 2 – Segmentation", ["seg.fill", "seg.expand", "seg.shrink", "seg.invert", "seg.watershed"]),
     ("Task 3 – Skeletonization", ["skel.k3m", "skel.zhang_suen", "skel.kmm"]),
     ("Task 4 – Feature extraction", ["minutiae.crossing_number", "minutiae.compare"]),
+    ("Task 5 – Verification and identification", ["verify.same_finger", "verify.identify"]),
 ]
 
 

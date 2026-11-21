@@ -6,7 +6,7 @@ from collections import deque
 
 import numpy as np
 
-from biografix.algorithms import geometry, minutiae, segmentation, skeletonization, thresholding
+from biografix.algorithms import geometry, matching, minutiae, segmentation, skeletonization, thresholding
 from biografix.algorithms.color_models import cmyk_to_rgb, rgb_to_cmyk
 from biografix.algorithms.skeletonization import k3m, kmm
 from biografix.core.imaging import paste_region, paste_region_where_selected, to_rgb
@@ -15,6 +15,7 @@ from biografix.core.registry import REGISTRY, TARGET_IMAGE
 from biografix.operations import load_all
 from biografix.scene.objects import LineShape, PolygonShape
 from biografix.scene.serialization import scene_from_dict, scene_to_dict
+from tests.synthetic import synthetic_print
 
 load_all()
 
@@ -339,6 +340,38 @@ class TestMinutiae(unittest.TestCase):
         self.assertEqual(tuple(out[10, 12]), minutiae.MINUTIA_COLOURS[minutiae.MinutiaType.ENDING])
         self.assertEqual(tuple(out[3, 5]), minutiae.REMOVED_COLOUR)
         self.assertEqual(tuple(image[10, 12]), (255, 255, 255))  # the input is not modified
+
+
+class TestVerification(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.original = matching.extract_template(synthetic_print(1))
+
+    def test_gabor_enhancement_finds_the_ridges(self):
+        image = synthetic_print(1)
+        enhanced, area, _orientation = matching.gabor_enhance(image)
+        dark = image < 128
+        agreement = ((enhanced < 0) == dark)[area].mean()
+        self.assertGreater(agreement, 0.9)
+
+    def test_minutiae_at_the_singularities(self):
+        self.assertTrue(8 <= len(self.original) <= 12)  # one per phase singularity
+
+    def test_rotated_impression_is_the_same_finger(self):
+        other = matching.extract_template(synthetic_print(1, rotation_deg=15, shift=(12, -8)))
+        result = matching.match_templates(self.original, other)
+        self.assertTrue(result.same_finger)
+        self.assertAlmostEqual(float(np.degrees(result.rotation)), 15, delta=4)
+
+    def test_different_finger_is_rejected(self):
+        for seed in (2, 3, 4):
+            with self.subTest(seed=seed):
+                other = matching.extract_template(synthetic_print(seed, rotation_deg=10))
+                self.assertFalse(matching.match_templates(self.original, other).same_finger)
+
+    def test_template_cache_reuses_the_result(self):
+        image = synthetic_print(5)
+        self.assertIs(matching.cached_template(image), matching.cached_template(image.copy()))
 
 
 class TestSceneFile(unittest.TestCase):

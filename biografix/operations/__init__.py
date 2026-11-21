@@ -14,6 +14,7 @@ MODULES = [
     "segmentation",
     "skeletonization",
     "minutiae",
+    "verification",
     "analysis",
     "geometry",
 ]

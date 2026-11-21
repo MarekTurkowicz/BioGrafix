@@ -64,6 +64,20 @@ Images can be passed on the command line: `python main.py fingerprint1.png finge
 python -m unittest discover -s tests -t .
 ```
 
+## Fingerprint verification and identification
+
+**Feature extraction → Verify: same finger?** compares the two fingerprints in the scene, and **Identify the
+selected fingerprint** searches the selected print among the other images (the database). Steps: Gabor
+enhancement, K3M skeleton, Crossing Number minutiae, Hough-transform alignment and minutiae pairing.
+
+Accuracy on FVC2002 DB1_B + DB2_B: FAR 2.2 %, FRR 15 %, EER 12.5 %; identification in a 10-finger database
+finds the right finger for about 90 % of the queries. Download the databases from
+http://bias.csr.unibo.it/fvc2002/ to repeat the measurement:
+
+```bash
+python tools/evaluate_verification.py path/to/DB1_B path/to/DB2_B
+```
+
 ## Quality checks
 
 ```bash

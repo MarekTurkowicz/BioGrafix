@@ -34,7 +34,7 @@ def marker_offsets(kind: MinutiaType, radius: int = MARKER_RADIUS) -> tuple[np.n
     return dy[outline], dx[outline]
 
 
-def _draw_markers(out: np.ndarray, minutiae: Sequence[Minutia], colour_of, radius: int) -> None:
+def draw_markers(out: np.ndarray, minutiae: Sequence[Minutia], colour_of, radius: int = MARKER_RADIUS) -> None:
     """Draw the markers of ``minutiae`` into ``out`` in place; ``colour_of(minutia)`` gives the RGB colour."""
     height, width = out.shape[:2]
     offsets = {kind: marker_offsets(kind, radius) for kind in MinutiaType}  # 4 shapes, computed once
@@ -49,6 +49,6 @@ def draw_minutiae(image: np.ndarray, minutiae: Sequence[Minutia], removed: Seque
                   radius: int = MARKER_RADIUS) -> np.ndarray:
     """Copy of the RGB ``image`` with a marker around every minutia; ``removed`` ones are grey and drawn first."""
     out = np.array(image[:, :, :3], dtype=np.uint8, copy=True)
-    _draw_markers(out, removed, lambda _m: REMOVED_COLOUR, radius)
-    _draw_markers(out, minutiae, lambda m: MINUTIA_COLOURS[m.type], radius)
+    draw_markers(out, removed, lambda _m: REMOVED_COLOUR, radius)
+    draw_markers(out, minutiae, lambda m: MINUTIA_COLOURS[m.type], radius)
     return out
