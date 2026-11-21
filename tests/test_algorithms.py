@@ -255,6 +255,19 @@ class TestSkeletonization(unittest.TestCase):
                 self.assertLessEqual(int(skeleton.sum(axis=0).max()), 2)  # at most 2 px per column
                 self.assertGreater(int(skeleton.sum()), 20)          # the line spans the bar
 
+    def test_local_binarization_handles_uneven_lighting(self):
+        from PIL import Image
+
+        # the right half of the demo fingerprint is darker: a global threshold makes it one blob
+        image = np.asarray(Image.open("biografix/resources/fingerprint.png").convert("RGB"))
+        half = image.shape[1] // 2
+        for binarization, expect_even in ((skeletonization.Binarization.SAUVOLA, True),
+                                          (skeletonization.Binarization.FIXED, False)):
+            with self.subTest(binarization=binarization):
+                ridges = skeletonization.binarized_object_mask(image, binarization)
+                right_to_left = ridges[:, half:].mean() / ridges[:, :half].mean()
+                self.assertEqual(right_to_left < 1.6, expect_even)
+
     def test_fingerprint_is_thinned_in_under_a_second(self):
         from PIL import Image
 

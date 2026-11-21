@@ -8,5 +8,13 @@
 load, so they are not imported here: use ``from .k3m import k3m_thinning`` when needed.
 """
 
-from ._common import ObjectColour, mask_to_image, neighbour_weight_sums, object_mask
+from ._common import (  # noqa: F401
+    LOCAL_WINDOW,
+    Binarization,
+    ObjectColour,
+    binarized_object_mask,
+    mask_to_image,
+    neighbour_weight_sums,
+    object_mask,
+)
 from .zhang_suen import zhang_suen_thinning

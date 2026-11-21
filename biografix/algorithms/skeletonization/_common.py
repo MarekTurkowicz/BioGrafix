@@ -15,7 +15,10 @@ from typing import assert_never
 
 import numpy as np
 
+from ..thresholding import phansalkar_threshold, sauvola_threshold
+
 OBJECT_THRESHOLD = 128  # gray value separating dark and light pixels
+LOCAL_WINDOW = 25       # local threshold window: about two ridge spacings of a fingerprint
 
 # (dy, dx, weight) of the eight neighbours, clockwise from the pixel above
 NEIGHBOUR_WEIGHTS = ((-1, 0, 1), (-1, 1, 2), (0, 1, 4), (1, 1, 8),
@@ -27,6 +30,34 @@ class ObjectColour(StrEnum):
 
     BLACK = "black"  # dark ridges on a light background (fingerprint after binarization)
     WHITE = "white"  # light object on a dark background
+
+
+class Binarization(StrEnum):
+    """How the image is turned into object / background before thinning."""
+
+    SAUVOLA = "sauvola"        # local threshold – handles uneven lighting (default)
+    PHANSALKAR = "phansalkar"  # local threshold for low-contrast images
+    FIXED = "fixed"            # the image is already binary: fixed global threshold 128
+
+
+def binarized_object_mask(image: np.ndarray, binarization: Binarization = Binarization.SAUVOLA,
+                          object_colour: ObjectColour = ObjectColour.BLACK,
+                          window_size: int = LOCAL_WINDOW) -> np.ndarray:
+    """Object mask after binarization; the local methods compute a threshold for every pixel.
+
+    A single global threshold fails on a fingerprint with uneven lighting: the
+    darker part becomes one black blob, whose skeleton has false lines and minutiae.
+    """
+    match binarization:
+        case Binarization.SAUVOLA:
+            binary = sauvola_threshold(image, window_size)
+        case Binarization.PHANSALKAR:
+            binary = phansalkar_threshold(image, window_size)
+        case Binarization.FIXED:
+            binary = np.asarray(image)
+        case _:
+            assert_never(binarization)
+    return object_mask(binary, object_colour)
 
 
 def object_mask(image: np.ndarray, object_colour: ObjectColour = ObjectColour.BLACK) -> np.ndarray:

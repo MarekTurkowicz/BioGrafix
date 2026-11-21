@@ -19,8 +19,7 @@ from ..algorithms.minutiae import (
     fingerprint_area,
     remove_border_minutiae,
 )
-from ..algorithms.skeletonization import ObjectColour, mask_to_image, object_mask
-from ..algorithms.thresholding import sauvola_threshold
+from ..algorithms.skeletonization import Binarization, ObjectColour, binarized_object_mask, mask_to_image, object_mask
 from ..core.params import BoolParam, ChoiceParam
 from ..core.registry import TARGET_SCENE, ImageResults, Report, operation
 from ..i18n import tr
@@ -28,10 +27,6 @@ from .skeletonization import load_compiled_thinning
 
 CAT = "Feature extraction"
 SECTION = "Minutiae"
-
-# Sauvola parameters that work for the fingerprints in this project
-SAUVOLA_WINDOW, SAUVOLA_K, SAUVOLA_R = 25, 0.2, 128.0
-
 
 class FingerprintInput(StrEnum):
     """What the processed image contains."""
@@ -60,8 +55,8 @@ def skeleton_of(image: np.ndarray, fingerprint_input: FingerprintInput) -> np.nd
         return object_mask(image, ObjectColour.BLACK)
     from ..algorithms.skeletonization.k3m import k3m_thinning  # loads numba (preloaded at start-up)
 
-    binary = sauvola_threshold(image, SAUVOLA_WINDOW, SAUVOLA_K, SAUVOLA_R)
-    skeleton, _iterations = load_compiled_thinning(k3m_thinning)(object_mask(binary, ObjectColour.BLACK))
+    ridges = binarized_object_mask(image, Binarization.SAUVOLA, ObjectColour.BLACK)  # local threshold
+    skeleton, _iterations = load_compiled_thinning(k3m_thinning)(ridges)
     return skeleton
 
 
