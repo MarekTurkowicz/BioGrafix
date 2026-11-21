@@ -15,7 +15,8 @@ An image operation receives a (H, W, 3) uint8 RGB array and returns one of:
 A list or tuple may combine several of these.
 
 A scene operation (``target=TARGET_SCENE``) receives every image in the scene,
-``f(images, names, **values)``, and may return :class:`ImageResults` with the new
+``f(images, names, query_index, **values)`` where ``query_index`` is the selected
+image (0 when none is selected), and may return :class:`ImageResults` with the new
 pixels of each image (applied as one undo step) together with reports and figures.
 """
 
@@ -46,7 +47,7 @@ CATEGORY_ORDER = [
 TARGET_IMAGE = "image"          # operates on the selected image
 TARGET_SHAPE = "shape"          # operates on the selected vector shape
 TARGET_SELECTION = "selection"  # changes the magic-wand selection: f(mask, image, **values) -> mask
-TARGET_SCENE = "scene"          # compares all images in the scene: f(images, names, **values)
+TARGET_SCENE = "scene"          # compares all images in the scene: f(images, names, query_index, **values)
 MIN_SCENE_IMAGES = 2            # a scene operation compares at least two images
 
 

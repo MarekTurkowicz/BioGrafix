@@ -163,12 +163,14 @@ class OperationRunner(QObject):
             raise OperationError(tr("Load at least {n} images to compare (File → Open images…).", n=MIN_SCENE_IMAGES))
         arrays = [np.array(to_rgb(img.pixels), copy=True) for img in images]
         names = [img.display_name for img in images]
+        selected = self.doc.selected
+        query_index = next((i for i, img in enumerate(images) if img is selected), 0)
         label = op.history_label(values)
         self._job = dict(op=op, label=label, oids=[img.oid for img in images],
                          source_pixels=[img.pixels for img in images])
 
         def compute():
-            return op.func(arrays, names, **values)
+            return op.func(arrays, names, query_index, **values)
 
         self._start(label, compute)
 

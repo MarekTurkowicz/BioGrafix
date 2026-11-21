@@ -33,6 +33,7 @@ ERROR_MESSAGES = [
     "Missing data separator after the P6 header.",
     "Not enough binary data in P6.",
     "Unknown PPM format (magic is not P3/P6).",
+    "Verification compares exactly two images – leave two fingerprints in the scene.",
     # selected through a variable, so not visible as tr("…") literals
     "{label}: only integers are allowed.",
     "{label}: only numbers are allowed.",

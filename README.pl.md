@@ -64,6 +64,20 @@ Obrazy można podać od razu: `python main.py odcisk1.png odcisk2.png`.
 python -m unittest discover -s tests -t .
 ```
 
+## Weryfikacja i identyfikacja odcisków
+
+**Ekstrakcja cech → Weryfikuj: ten sam palec?** porównuje dwa odciski w scenie, a **Zidentyfikuj zaznaczony
+odcisk** szuka zaznaczonego odcisku wśród pozostałych obrazów (baza). Kolejne kroki: wzmocnienie filtrem Gabora,
+szkielet K3M, minucje (Crossing Number), wyrównanie transformatą Hougha i parowanie minucji.
+
+Skuteczność na FVC2002 DB1_B + DB2_B: FAR 2,2%, FRR 15%, EER 12,5%; identyfikacja w bazie 10 palców
+wskazuje właściwy palec w około 90% zapytań. Pomiar można powtórzyć po pobraniu baz
+z http://bias.csr.unibo.it/fvc2002/:
+
+```bash
+python tools/evaluate_verification.py ścieżka/do/DB1_B ścieżka/do/DB2_B
+```
+
 ## Kontrola jakości
 
 ```bash
