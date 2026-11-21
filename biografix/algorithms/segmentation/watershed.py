@@ -10,13 +10,9 @@
    a pixel where two basins meet becomes a watershed line.
 """
 
-import heapq
-from collections import deque
-
 import numpy as np
 
-WATERSHED_LINE = -1
-NEIGHBOUR_OFFSETS = ((0, -1), (-1, 0), (1, 0), (0, 1))
+WATERSHED_LINE = -1  # same value as in watershed_kernels
 
 
 def mean_blur_3x3(gray: np.ndarray, passes: int = 1) -> np.ndarray:
@@ -50,66 +46,23 @@ def sobel_gradient_magnitude(gray: np.ndarray) -> np.ndarray:
 
 
 def label_connected_regions(mask: np.ndarray, min_size: int = 1) -> tuple[np.ndarray, int]:
-    """Label 4-connected regions of ``mask`` as 1..n; regions below ``min_size`` stay 0."""
-    height, width = mask.shape
-    labels = np.zeros((height, width), dtype=np.int32)
-    region_count = 0
-    for start_y, start_x in zip(*np.nonzero(mask), strict=True):
-        if labels[start_y, start_x]:
-            continue
-        region_count += 1
-        labels[start_y, start_x] = region_count
-        region_pixels = [(start_y, start_x)]
-        pixels_to_visit = deque(region_pixels)
-        while pixels_to_visit:
-            y, x = pixels_to_visit.popleft()
-            for dx, dy in NEIGHBOUR_OFFSETS:
-                ny, nx = y + dy, x + dx
-                if 0 <= ny < height and 0 <= nx < width and mask[ny, nx] and not labels[ny, nx]:
-                    labels[ny, nx] = region_count
-                    region_pixels.append((ny, nx))
-                    pixels_to_visit.append((ny, nx))
-        if len(region_pixels) < min_size:
-            ys, xs = zip(*region_pixels, strict=True)
-            labels[list(ys), list(xs)] = 0
-            region_count -= 1
-    return labels, region_count
+    """Label 4-connected regions of ``mask`` as 1..n in row-major order; regions below ``min_size`` stay 0."""
+    from .watershed_kernels import label_connected_regions_compiled  # loads numba
+
+    labels, region_count = label_connected_regions_compiled(np.asarray(mask, dtype=np.bool_), int(min_size))
+    return labels, int(region_count)
 
 
 def flood_from_markers(gradient: np.ndarray, markers: np.ndarray) -> np.ndarray:
-    """Flood ``gradient`` from the labelled ``markers``; returns labels with ``WATERSHED_LINE`` between basins."""
-    height, width = gradient.shape
-    labels = markers.astype(np.int32).copy()
-    already_queued = labels != 0
-    queue: list[tuple[float, int, int, int]] = []
-    insertion_counter = 0  # pixels of equal gradient are processed first in, first out
+    """Flood ``gradient`` from the labelled ``markers``; returns labels with ``WATERSHED_LINE`` between basins.
 
-    def enqueue_unvisited_neighbours(y, x):
-        nonlocal insertion_counter
-        for dx, dy in NEIGHBOUR_OFFSETS:
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < height and 0 <= nx < width and not already_queued[ny, nx]:
-                already_queued[ny, nx] = True
-                heapq.heappush(queue, (gradient[ny, nx], insertion_counter, ny, nx))
-                insertion_counter += 1
+    Pixels leave a priority queue in order of increasing gradient (ties first in,
+    first out). A pixel next to exactly one basin joins it and puts its unvisited
+    neighbours in the queue; a pixel next to several basins becomes a watershed line.
+    """
+    from .watershed_kernels import flood_from_markers_compiled  # loads numba
 
-    for y, x in zip(*np.nonzero(labels), strict=True):
-        enqueue_unvisited_neighbours(y, x)
-
-    while queue:
-        _gradient, _counter, y, x = heapq.heappop(queue)
-        neighbour_basins = set()
-        for dx, dy in NEIGHBOUR_OFFSETS:
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < height and 0 <= nx < width and labels[ny, nx] > 0:
-                neighbour_basins.add(int(labels[ny, nx]))
-        if len(neighbour_basins) == 1:
-            labels[y, x] = neighbour_basins.pop()
-            enqueue_unvisited_neighbours(y, x)
-        else:
-            labels[y, x] = WATERSHED_LINE
-    labels[labels == 0] = WATERSHED_LINE  # pixels enclosed by lines on every side
-    return labels
+    return flood_from_markers_compiled(np.asarray(gradient, dtype=np.float64), np.asarray(markers, dtype=np.int32))
 
 
 def watershed_segmentation(image: np.ndarray, smoothing_passes: int = 2, marker_percent: float = 15.0,

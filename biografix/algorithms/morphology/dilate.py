@@ -1,27 +1,13 @@
 """Binary dilation."""
 
+import numpy as np
 
-def dilate(bin_img, w, h, se):
-    kh = len(se)
-    kw = len(se[0])
-    cy = kh // 2
-    cx = kw // 2
-    out = [0] * (w * h)
+from ._common import element_offsets, neighbour
 
-    for y in range(h):
-        for x in range(w):
-            val = 0
-            for j in range(kh):
-                for i in range(kw):
-                    if se[j][i] != 1:
-                        continue
-                    xx = x + i - cx
-                    yy = y + j - cy
-                    if 0 <= xx < w and 0 <= yy < h:
-                        if bin_img[yy * w + xx] == 1:
-                            val = 1
-                            break
-                if val:
-                    break
-            out[y * w + x] = val
+
+def dilate(mask: np.ndarray, se) -> np.ndarray:
+    """A pixel becomes 1 if any element cell equal to 1 covers an object pixel."""
+    out = np.zeros_like(mask, dtype=bool)
+    for dy, dx in element_offsets(se, 1):
+        out |= neighbour(mask, dy, dx)
     return out

@@ -2,16 +2,12 @@
 
 import numpy as np
 
-from ._common import _apply_threshold_to_pixels, _gray_average, apply_threshold
+from ._common import _gray_average, apply_threshold, luminance_levels, threshold_luminance
 
 
-def threshold_manual(pixels, T):
-    """Threshold at a user-given T."""
-    if T < 0:
-        T = 0
-    elif T > 255:
-        T = 255
-    return _apply_threshold_to_pixels(pixels, T)
+def threshold_manual(image: np.ndarray, T: int) -> np.ndarray:
+    """Threshold the luminance at a user-given T (below T becomes black)."""
+    return threshold_luminance(luminance_levels(image), max(0, min(255, T)))
 
 
 def manual_threshold(image: np.ndarray, threshold: int) -> np.ndarray:

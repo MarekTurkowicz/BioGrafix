@@ -1,19 +1,18 @@
 """Thresholding (binarisation), one method per module.
 
-- Pixel-list methods (manual, Percent Black, Mean Iterative, Kapur entropy)
-  use luminance; values below T become black.
-- numpy methods (manual, Otsu, Niblack, Sauvola, Phansalkar) use the channel
-  average (R+G+B)/3; values above T become white.
+- Luminance methods (manual, Percent Black, Mean Iterative, Kapur entropy):
+  values below T become black.
+- Channel-average methods (manual, Otsu, Niblack, Sauvola, Phansalkar):
+  values above T become white.
 """
 
 from ._common import (  # noqa: F401
-    _apply_threshold_to_pixels,
     _gray_average,
-    _luma,
-    _to_gray_list,
     apply_threshold,
     binary_to_rgb,
     local_mean_std,
+    luminance_levels,
+    threshold_luminance,
 )
 from .entropy_kapur import threshold_entropy  # noqa: F401
 from .manual import manual_threshold, threshold_manual  # noqa: F401

@@ -1,11 +1,10 @@
 """Helpers shared by the histogram operations."""
 
+import numpy as np
 
-def _luma(r, g, b):
-    """Luminance in the range 0..255."""
-    y = 0.299 * r + 0.587 * g + 0.114 * b
-    if y < 0:
-        y = 0
-    elif y > 255:
-        y = 255
-    return int(round(y))
+from ..point_ops import luminance_levels  # noqa: F401  (re-exported for the histogram modules)
+
+
+def gray_image(levels: np.ndarray) -> np.ndarray:
+    """(H, W, 3) uint8 image with the given gray level in every channel."""
+    return np.stack([levels.astype(np.uint8)] * 3, axis=-1)
