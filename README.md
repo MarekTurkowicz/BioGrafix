@@ -15,6 +15,7 @@ morphology, histograms, colour models and vector shapes, all on one canvas.
 - Background processing with a live timer and cancel.
 - Region of interest: run any operation on a selected area only.
 - Drawing tools: Bresenham lines, rectangles and circles, polygons, Bézier curves.
+- **More** tab with the methods of each assignment in one place.
 - English and Polish interface (View → Language).
 
 ## Algorithms
@@ -24,7 +25,7 @@ morphology, histograms, colour models and vector shapes, all on one canvas.
 | Point operations | add / multiply / divide, brightness, levels, lighten / darken, 5 grayscale methods, fill with colour |
 | Histogram | luminance and RGB histograms, stretching and equalisation (luminance / per channel) |
 | Filters | box blur, Gaussian 5×5, median, Sobel magnitude, sharpen, custom kernel, preset kernels (Prewitt, Sobel, Laplace, corners) |
-| Thresholding | manual, Otsu, Percent Black, Mean Iterative Selection, entropy (Kapur) |
+| Thresholding | manual, Otsu, Percent Black, Mean Iterative Selection, entropy (Kapur), **Niblack, Sauvola, Phansalkar** |
 | Morphology | dilation, erosion, opening, closing, hit-or-miss (thinning / thickening) |
 | Segmentation | background removal (rembg) |
 | Analysis | colour coverage in HSV |
@@ -63,12 +64,27 @@ Images can be passed on the command line: `python main.py fingerprint1.png finge
 python -m unittest discover -s tests -t .
 ```
 
+## Quality checks
+
+```bash
+pip install -r requirements-dev.txt
+pre-commit install          # once, with the venv active
+ruff check .                # style and common bugs
+mypy                        # type checking
+```
+
+The `pre-commit` hooks run ruff and mypy on every commit, reject commit messages that carry
+AI co-author attribution, and run the tests before `git push`. GitHub Actions
+(`.github/workflows/ci.yml`) repeats the same checks on every push and pull request.
+The scene JSON format is validated with pydantic (`biografix/scene/serialization.py`).
+
 ## Project layout
 
 ```
 main.py              entry point
 biografix/
-  algorithms/        pure algorithms, no GUI
+  algorithms/        pure algorithms, no GUI; one file = one algorithm
+                     (e.g. algorithms/thresholding/otsu.py), shared helpers in _common.py
   operations/        registers algorithms as tiles and menu entries
   core/              registry, parameters, document + undo history, background runner
   scene/             scene objects, JSON save / load

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFontDatabase
@@ -35,12 +35,12 @@ class ParamsDialog(QDialog):
     After acceptance ``values`` holds the validated values and ``raw`` the field contents.
     """
 
-    def __init__(self, op: Operation, initial: Dict[str, Any], parent=None):
+    def __init__(self, op: Operation, initial: dict[str, Any], parent=None):
         super().__init__(parent)
         self.op = op
-        self.values: Dict[str, Any] = {}
-        self.raw: Dict[str, Any] = {}
-        self._widgets: Dict[str, QWidget] = {}
+        self.values: dict[str, Any] = {}
+        self.raw: dict[str, Any] = {}
+        self._widgets: dict[str, QWidget] = {}
         self.setWindowTitle(f"{tr(op.category)} – {tr(op.label)}")
         self.setMinimumWidth(420)
 
@@ -80,28 +80,28 @@ class ParamsDialog(QDialog):
     # ---------------------------------------------------------------- widgets --
     def _make_widget(self, p: Param) -> QWidget:
         if isinstance(p, IntParam):
-            w = QSpinBox()
-            w.setRange(p.minimum, p.maximum)
-            w.setSingleStep(2 if p.odd else p.step)
-            return w
+            spin = QSpinBox()
+            spin.setRange(p.minimum, p.maximum)
+            spin.setSingleStep(2 if p.odd else p.step)
+            return spin
         if isinstance(p, FloatParam):
-            w = QDoubleSpinBox()
-            w.setDecimals(p.decimals)
-            w.setRange(p.minimum, p.maximum)
-            w.setSingleStep(p.step)
-            return w
+            dspin = QDoubleSpinBox()
+            dspin.setDecimals(p.decimals)
+            dspin.setRange(p.minimum, p.maximum)
+            dspin.setSingleStep(p.step)
+            return dspin
         if isinstance(p, BoolParam):
             return QCheckBox()
         if isinstance(p, ChoiceParam):
-            w = QComboBox()
+            combo = QComboBox()
             for value, label in p.choices:
-                w.addItem(tr(label), value)
-            return w
+                combo.addItem(tr(label), value)
+            return combo
         if isinstance(p, MatrixParam):
-            w = QPlainTextEdit()
-            w.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
-            w.setFixedHeight(110)
-            return w
+            edit = QPlainTextEdit()
+            edit.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
+            edit.setFixedHeight(110)
+            return edit
         raise TypeError(f"Unsupported parameter type: {type(p).__name__}")
 
     def _set_widget_value(self, p, w, value):

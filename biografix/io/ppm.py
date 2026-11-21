@@ -1,5 +1,5 @@
 """Pure Python PPM reader (P3 and P6) with buffered parsing."""
-from typing import List, Tuple, Iterator
+from collections.abc import Iterator
 
 
 def _scale_to_255(v: int, maxval: int) -> int:
@@ -56,12 +56,12 @@ def _p3_token_stream(path: str, chunk_size: int = 1 << 20) -> Iterator[str]:
             yield buf.decode("ascii", errors="strict")
 
 
-def read_ppm_p3(path: str) -> Tuple[int, int, List[Tuple[int, int, int]]]:
+def read_ppm_p3(path: str) -> tuple[int, int, list[tuple[int, int, int]]]:
     ts = _p3_token_stream(path)
     try:
         magic = next(ts)
     except StopIteration:
-        raise ValueError("Empty PPM file.")
+        raise ValueError("Empty PPM file.") from None
     if magic != "P3":
         raise ValueError("Not a PPM P3 file (magic != P3).")
     try:
@@ -69,18 +69,18 @@ def read_ppm_p3(path: str) -> Tuple[int, int, List[Tuple[int, int, int]]]:
         h = int(next(ts))
         maxval = int(next(ts))
     except StopIteration:
-        raise ValueError("Incomplete P3 header.")
+        raise ValueError("Incomplete P3 header.") from None
     if w <= 0 or h <= 0 or maxval <= 0:
         raise ValueError("Invalid P3 header.")
     expected = w * h * 3
-    vals: List[int] = []
+    vals: list[int] = []
     for t in ts:
         if len(vals) >= expected:
             break
         vals.append(int(t))
     if len(vals) < expected:
         raise ValueError(f"Not enough RGB samples: {len(vals)} < {expected}")
-    px: List[Tuple[int, int, int]] = []
+    px: list[tuple[int, int, int]] = []
     it = iter(vals[:expected])
     for _ in range(w * h):
         r = _scale_to_255(next(it), maxval)
@@ -93,7 +93,7 @@ def read_ppm_p3(path: str) -> Tuple[int, int, List[Tuple[int, int, int]]]:
 # ---------- P6 (binary) ----------
 
 
-def read_ppm_p6(path: str) -> Tuple[int, int, List[Tuple[int, int, int]]]:
+def read_ppm_p6(path: str) -> tuple[int, int, list[tuple[int, int, int]]]:
     import io
 
     with open(path, "rb") as raw:
@@ -143,7 +143,7 @@ def read_ppm_p6(path: str) -> Tuple[int, int, List[Tuple[int, int, int]]]:
         buf = f.read(total)
         if len(buf) < total:
             raise ValueError("Not enough binary data in P6.")
-        px: List[Tuple[int, int, int]] = []
+        px: list[tuple[int, int, int]] = []
         if bps == 1:
             it = iter(buf)
             for _ in range(w * h):

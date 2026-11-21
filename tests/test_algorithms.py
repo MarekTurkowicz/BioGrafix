@@ -8,8 +8,10 @@ from biografix.algorithms import geometry, thresholding
 from biografix.algorithms.color_models import cmyk_to_rgb, rgb_to_cmyk
 from biografix.core.imaging import array_to_pixels, paste_region, pixels_to_array, to_rgb
 from biografix.core.params import IntParam, MatrixParam
-from biografix.core.registry import REGISTRY, TARGET_IMAGE, Report
+from biografix.core.registry import REGISTRY, TARGET_IMAGE
 from biografix.operations import load_all
+from biografix.scene.objects import LineShape, PolygonShape
+from biografix.scene.serialization import scene_from_dict, scene_to_dict
 
 load_all()
 
@@ -44,6 +46,25 @@ class TestThresholding(unittest.TestCase):
         self.assertTrue(50 <= t < 200)
         out = thresholding.otsu_threshold(img)
         self.assertTrue((out[:, :5] == 0).all() and (out[:, 5:] == 255).all())
+
+    def test_local_methods_handle_uneven_lighting(self):
+        # ridge-like stripes on a background with a lighting gradient
+        h, w = 60, 120
+        bg = np.tile(np.linspace(60, 230, w), (h, 1))
+        stripes = (np.sin(np.arange(w) / 3.0) > 0.3)[None, :].repeat(h, 0)
+        gray = np.where(stripes, bg * 0.55, bg)
+        img = np.stack([gray] * 3, -1).astype(np.uint8)
+        truth = ~stripes
+        for fn in (thresholding.niblack_threshold, thresholding.sauvola_threshold, thresholding.phansalkar_threshold):
+            with self.subTest(fn=fn.__name__):
+                acc = ((fn(img)[:, :, 0] == 255) == truth).mean()
+                self.assertGreater(acc, 0.95)
+
+    def test_local_mean_std_no_uint8_overflow(self):
+        gray = np.full((20, 20), 200, np.uint8)
+        m, s = thresholding.local_mean_std(gray, 5)
+        self.assertTrue(np.allclose(m, 200))
+        self.assertTrue(np.allclose(s, 0))
 
 
 class TestGeometry(unittest.TestCase):
@@ -90,6 +111,23 @@ class TestFormatsAndParams(unittest.TestCase):
         self.assertEqual(se.validate("0 1\n-1 1"), [[0, 1], [-1, 1]])
         with self.assertRaises(ValueError):
             se.validate("0 2")
+
+
+class TestSceneFile(unittest.TestCase):
+    def test_roundtrip(self):
+        objs = scene_from_dict(scene_to_dict([LineShape(x1=1, y1=2, x2=3, y2=4)]))
+        self.assertIsInstance(objs[0], LineShape)
+        self.assertEqual((objs[0].x1, objs[0].y2), (1, 4))
+
+    def test_polygons_only_file(self):
+        objs = scene_from_dict({"polygons": [{"points": [[0, 0], [5, 0], [5, 5]], "closed": False}]})
+        self.assertIsInstance(objs[0], PolygonShape)
+        self.assertFalse(objs[0].closed)
+
+    def test_invalid_file_is_rejected(self):
+        for bad in ([], {"objects": [{"name": "no type"}]}, {"polygons": [{"points": [["a", 0]]}]}):
+            with self.assertRaises(ValueError):
+                scene_from_dict(bad)
 
 
 if __name__ == "__main__":

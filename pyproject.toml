@@ -1,0 +1,32 @@
+[project]
+name = "biografix"
+version = "0.1.0"
+description = "Image processing and graphics toolkit for biometrics coursework"
+requires-python = ">=3.12"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = [".venv", ".venv-*"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # import sorting
+    "UP",  # pyupgrade
+    "B",   # bugbear
+]
+ignore = ["E501"]  # long lines are left to the author
+
+[tool.ruff.lint.per-file-ignores]
+"biografix/algorithms/*/__init__.py" = ["F401"]  # re-exports
+
+[tool.mypy]
+python_version = "3.12"
+files = ["biografix", "main.py"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+plugins = ["pydantic.mypy"]

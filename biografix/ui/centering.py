@@ -48,5 +48,5 @@ def _safe_center(win):
 def install(app: QApplication) -> None:
     """Install the filter once per application; later calls do nothing."""
     if getattr(app, "_biografix_centerer", None) is None:
-        app._biografix_centerer = DialogCenterer(app)
-        app.installEventFilter(app._biografix_centerer)
+        app._biografix_centerer = DialogCenterer(app)  # type: ignore[attr-defined]
+        app.installEventFilter(app._biografix_centerer)  # type: ignore[attr-defined]

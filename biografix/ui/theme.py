@@ -8,6 +8,7 @@ the Python blue #3776AB and yellow #FFD43B.
 from __future__ import annotations
 
 import sys
+from typing import Any, cast
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QPalette
@@ -20,7 +21,7 @@ FONT_PT_RANGE = (8, 18)
 PY_BLUE = "#3776ab"
 PY_YELLOW = "#ffd43b"
 
-THEMES = {
+THEMES: dict[str, dict[str, Any]] = {
     "dark": {
         "label": "Dark",
         "bg": "#1e1f22",         # window background
@@ -74,7 +75,7 @@ THEMES = {
 # per-category accent colours, assigned to tabs in order
 CATEGORY_ACCENTS = ["#4a8fd4", "#ffd43b", "#4fc08d", "#e06c75", "#c678dd", "#56b6c2", "#e5a04b", "#98c379", "#d19a66"]
 
-_current = {"name": DEFAULT_THEME, "pt": DEFAULT_FONT_PT}
+_current: dict[str, Any] = {"name": DEFAULT_THEME, "pt": DEFAULT_FONT_PT}
 
 
 def current_name() -> str:
@@ -211,7 +212,7 @@ QToolButton#tile:disabled {{ color: {t['muted']}; background: {t['panel']}; }}
 
 def apply(name: str | None = None, pt: int | None = None) -> None:
     """Apply a theme and/or font size to the whole application."""
-    app = QApplication.instance()
+    app = cast(QApplication, QApplication.instance())
     if name in THEMES:
         _current["name"] = name
     if pt is not None:

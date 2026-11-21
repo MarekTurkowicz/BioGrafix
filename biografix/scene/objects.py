@@ -15,12 +15,10 @@ import io
 import math
 import uuid
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
 
 import numpy as np
 from PIL import Image
 
-from ..i18n import tr
 from ..algorithms.geometry import (
     bezier_points,
     bresenham_circle,
@@ -30,8 +28,9 @@ from ..algorithms.geometry import (
     rect_outline,
 )
 from ..constants import COL_CIRC, COL_LINE, COL_RECT
+from ..i18n import tr
 
-Point = Tuple[float, float]
+Point = tuple[float, float]
 
 
 # ---------------------------------------------------------------- helpers --
@@ -48,7 +47,7 @@ def parts(txt: str, n: int):
     return ps
 
 
-def parse_points(raw: str) -> List[Point]:
+def parse_points(raw: str) -> list[Point]:
     """Parse points given as ``x1,y1; x2,y2; …`` or one ``x,y`` pair per line."""
     pts = []
     for line in raw.strip().splitlines():
@@ -98,13 +97,16 @@ class SceneObject:
 
     # --- implemented by subclasses ---
     def move(self, dx: float, dy: float) -> None: ...
-    def bbox(self) -> Tuple[float, float, float, float]: ...
-    def handles(self) -> List[Tuple[float, float, str]]: return []
+    def bbox(self) -> tuple[float, float, float, float]:
+        raise NotImplementedError
+
+    def handles(self) -> list[tuple[float, float, str]]: return []
     def apply_handle(self, kind: str, x: float, y: float) -> None: ...
     def hit_test(self, x: float, y: float, tol: float) -> bool: return False
     def params_text(self) -> str: return ""
     def set_params_text(self, txt: str) -> None: ...
-    def to_dict(self) -> dict: ...
+    def to_dict(self) -> dict:
+        raise NotImplementedError
 
     def clone(self):
         """Snapshot copy: point lists are copied, pixel arrays are shared."""
@@ -114,7 +116,7 @@ class SceneObject:
 
     @property
     def display_name(self) -> str:
-        return self.name or f"{tr(self.kind_label)} {self.oid[:4]}"
+        return self.name or f"{tr(self.kind_label)} {self.oid[:4]}"  # type: ignore[attr-defined]
 
 
 def _bbox_contains(b, x, y, margin=0.0) -> bool:
@@ -300,7 +302,7 @@ class CircleShape(SceneObject):
 
 @dataclass
 class _PointsShape(SceneObject):
-    points: List[Point] = field(default_factory=list)
+    points: list[Point] = field(default_factory=list)
     color: str = ""          # empty: theme default
     width: int = 1           # stroke width in pixels
     name: str = ""
@@ -407,12 +409,12 @@ class RasterImage(SceneObject):
 
     x: float = 0
     y: float = 0
-    pixels: Optional[np.ndarray] = None
-    original: Optional[np.ndarray] = None
-    w: Optional[int] = None
-    h: Optional[int] = None
-    src: Optional[str] = None
-    roi: Optional[Tuple[int, int, int, int]] = None
+    pixels: np.ndarray = None  # type: ignore[assignment]
+    original: np.ndarray = None  # type: ignore[assignment]
+    w: int = None  # type: ignore[assignment]
+    h: int = None  # type: ignore[assignment]
+    src: str | None = None
+    roi: tuple[int, int, int, int] | None = None
     name: str = ""
     oid: str = ""
 
@@ -448,7 +450,7 @@ class RasterImage(SceneObject):
             self.h = max(1, int(round(self.src_h * sy)))
             self.roi = None
 
-    def scene_to_pixel(self, sx: float, sy: float) -> Tuple[int, int]:
+    def scene_to_pixel(self, sx: float, sy: float) -> tuple[int, int]:
         """Map scene coordinates to source pixel indices (may fall outside the image)."""
         px = math.floor((sx - self.x) * self.src_w / self.w)
         py = math.floor((sy - self.y) * self.src_h / self.h)
@@ -561,15 +563,14 @@ def object_from_dict(d: dict) -> SceneObject:
             pixels = load_image(d["src"])
         else:
             pixels = np.full((int(d.get("h", 64)), int(d.get("w", 64)), 3), 200, np.uint8)
-        original = _decode_png(d["original_png"]) if "original_png" in d else None
-        return RasterImage(
-            x=d.get("x", 0), y=d.get("y", 0), pixels=pixels, original=original,
-            w=d.get("w"), h=d.get("h"), src=d.get("src"), name=name,
-        )
+        extra = {k: d[k] for k in ("w", "h") if d.get(k) is not None}  # missing size: taken from pixels
+        if "original_png" in d:
+            extra["original"] = _decode_png(d["original_png"])
+        return RasterImage(x=d.get("x", 0), y=d.get("y", 0), pixels=pixels, src=d.get("src"), name=name, **extra)
     raise ValueError(f"Unknown object type: {t}")
 
 
-SHAPE_TYPES = {
+SHAPE_TYPES: dict[str, type[SceneObject]] = {
     "line": LineShape,
     "rect": RectShape,
     "circle": CircleShape,

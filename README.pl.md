@@ -15,6 +15,7 @@ morfologia, histogramy, modele kolorów i figury wektorowe, wszystko na jednym p
 - Liczenie w tle z licznikiem czasu i możliwością przerwania.
 - Obszar obrazu: operacja działa tylko w zaznaczonym fragmencie.
 - Rysowanie: linie, prostokąty i okręgi (Bresenham), wielokąty, krzywe Béziera.
+- Zakładka **Więcej**: metody z danego zadania w jednym miejscu.
 - Interfejs po polsku i po angielsku (Widok → Język).
 
 ## Algorytmy
@@ -24,7 +25,7 @@ morfologia, histogramy, modele kolorów i figury wektorowe, wszystko na jednym p
 | Operacje punktowe | dodawanie / mnożenie / dzielenie, jasność, Levels, rozjaśnij / przyciemnij, 5 metod skali szarości, wypełnij kolorem |
 | Histogram | histogram jasności i RGB, rozciąganie i wyrównywanie (jasność / każdy kanał) |
 | Filtry | uśredniający, Gauss 5×5, medianowy, Sobel (moduł), wyostrzający, własna maska, maski gotowe (Prewitt, Sobel, Laplace, narożniki) |
-| Binaryzacja | ręczna, Otsu, Percent Black, Mean Iterative Selection, entropia (Kapur) |
+| Binaryzacja | ręczna, Otsu, Percent Black, Mean Iterative Selection, entropia (Kapur), **Niblack, Sauvola, Phansalkar** |
 | Morfologia | dylatacja, erozja, otwarcie, domknięcie, hit-or-miss (ścienianie / pogrubianie) |
 | Segmentacja | usuwanie tła (rembg) |
 | Analiza | procent pokrycia kolorem (HSV) |
@@ -63,12 +64,27 @@ Obrazy można podać od razu: `python main.py odcisk1.png odcisk2.png`.
 python -m unittest discover -s tests -t .
 ```
 
+## Kontrola jakości
+
+```bash
+pip install -r requirements-dev.txt
+pre-commit install          # raz, przy aktywnym venv
+ruff check .                # styl i typowe błędy
+mypy                        # sprawdzanie typów
+```
+
+Hooki `pre-commit` uruchamiają ruff i mypy przy każdym commicie, odrzucają wiadomości commitów
+z dopiskami o współautorstwie AI i uruchamiają testy przed `git push`. GitHub Actions
+(`.github/workflows/ci.yml`) powtarza te same kontrole dla każdego pusha i pull requesta.
+Format pliku sceny JSON jest walidowany przez pydantic (`biografix/scene/serialization.py`).
+
 ## Struktura
 
 ```
 main.py              start aplikacji
 biografix/
-  algorithms/        czyste algorytmy, bez GUI
+  algorithms/        czyste algorytmy, bez GUI; jeden plik = jeden algorytm
+                     (np. algorithms/thresholding/otsu.py), wspólne pomocnicze w _common.py
   operations/        rejestracja algorytmów jako kafelki i pozycje menu
   core/              rejestr, parametry, dokument + historia, liczenie w tle
   scene/             obiekty sceny, zapis / odczyt JSON

@@ -113,7 +113,7 @@ class ColorConverterWindow(QWidget):
         self._updating = True
         r, g, b = (self.rgb[c].value() for c in "RGB")
         c, m, y, k = rgb_to_cmyk(r, g, b)
-        for ch, v in zip("CMYK", (c, m, y, k)):
+        for ch, v in zip("CMYK", (c, m, y, k), strict=True):
             self.cmyk[ch].setValue(v * 100.0)
         self._updating = False
         self._show(r, g, b, c, m, y, k)
@@ -124,7 +124,7 @@ class ColorConverterWindow(QWidget):
         self._updating = True
         c, m, y, k = (self.cmyk[ch].value() / 100.0 for ch in "CMYK")
         r, g, b = cmyk_to_rgb(c, m, y, k)
-        for ch, v in zip("RGB", (r, g, b)):
+        for ch, v in zip("RGB", (r, g, b), strict=True):
             self.rgb[ch].setValue(v)
         self._updating = False
         self._show(r, g, b, c, m, y, k)

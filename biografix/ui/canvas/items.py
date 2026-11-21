@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QImage, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QGraphicsItem, QStyleOptionGraphicsItem
 
 from ...constants import COL_ROI
-from .. import theme
 from ...scene.objects import BezierShape, PolygonShape, RasterImage, SceneObject
+from .. import theme
 from ..qt_image import array_to_qimage
 
 PIXEL_VALUES_MIN_PX = 44   # on-screen pixel size above which pixel values are drawn
@@ -30,8 +31,8 @@ class ObjectItem(QGraphicsItem):
         super().__init__()
         self.obj = obj
         self.view = view
-        self._qimage = None
-        self._qimage_key = None
+        self._qimage: Any = None
+        self._qimage_key: Any = None
         self._points_key = None
         self._points_poly = None
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemUsesExtendedStyleOption, True)
@@ -138,7 +139,7 @@ class ObjectItem(QGraphicsItem):
         painter.setBrush(QColor(c["bezier_point"]))
         font = QFont()
         font.setPointSizeF(max(8, theme.current_font_pt() - 2))
-        for i, (x, y) in enumerate(obj.points):
+        for x, y in obj.points:
             painter.drawEllipse(QPointF(x, y), r, r)
         # labels in screen coordinates (constant font size)
         painter.save()
@@ -159,7 +160,7 @@ class ObjectItem(QGraphicsItem):
             self._qimage = array_to_qimage(obj.pixels)
         target = QRectF(obj.x, obj.y, obj.w, obj.h)
         if obj.pixels.shape[2] == 4:
-            painter.fillRect(target, QBrush(QColor("#cccccc"), Qt.BrushPattern.Dense4Pattern))
+            painter.fillRect(target, QBrush(QColor("#cccccc"), Qt.BrushStyle.Dense4Pattern))
         # nearest-neighbour scaling shows pixels as squares
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, False)
         painter.drawImage(target, self._qimage)

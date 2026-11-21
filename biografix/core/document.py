@@ -9,9 +9,9 @@ read-only.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Sequence, Set, Tuple
 
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QUndoCommand, QUndoStack
@@ -23,14 +23,14 @@ from ..scene.objects import RasterImage, SceneObject, new_oid
 
 @dataclass(frozen=True)
 class SceneState:
-    objects: Tuple[SceneObject, ...]
-    selected_oid: Optional[str]
+    objects: tuple[SceneObject, ...]
+    selected_oid: str | None
 
 
 class SnapshotCommand(QUndoCommand):
     """Undo command that restores the snapshot taken before or after a change."""
 
-    def __init__(self, doc: "Document", label: str, before: SceneState, after: SceneState):
+    def __init__(self, doc: Document, label: str, before: SceneState, after: SceneState):
         super().__init__(label)
         self._doc = doc
         self._before = before
@@ -54,19 +54,19 @@ class Document(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.objects: List[SceneObject] = []
-        self.selected_oid: Optional[str] = None
+        self.objects: list[SceneObject] = []
+        self.selected_oid: str | None = None
         # veto for deletions: f(ids) -> bool, set by the main window to protect images being processed
-        self.remove_guard: Optional[Callable[[Set[str]], bool]] = None
-        self.file_path: Optional[str] = None
+        self.remove_guard: Callable[[set[str]], bool] | None = None
+        self.file_path: str | None = None
         self.undo_stack = QUndoStack(self)
         self.undo_stack.setUndoLimit(UNDO_LIMIT)
-        self._interactive_before: Optional[SceneState] = None
+        self._interactive_before: SceneState | None = None
         # True while the history changes because of a new step or a reset rather than undo / redo
         self.recording = False
 
     # ----------------------------------------------------------------- access --
-    def find(self, oid: Optional[str]) -> Optional[SceneObject]:
+    def find(self, oid: str | None) -> SceneObject | None:
         if oid is None:
             return None
         return next((o for o in self.objects if o.oid == oid), None)
@@ -75,13 +75,13 @@ class Document(QObject):
         return next((i for i, o in enumerate(self.objects) if o.oid == oid), -1)
 
     @property
-    def selected(self) -> Optional[SceneObject]:
+    def selected(self) -> SceneObject | None:
         return self.find(self.selected_oid)
 
-    def images(self) -> List[RasterImage]:
+    def images(self) -> list[RasterImage]:
         return [o for o in self.objects if isinstance(o, RasterImage)]
 
-    def target_image(self) -> Optional[RasterImage]:
+    def target_image(self) -> RasterImage | None:
         """The selected image, or the only image in the scene when nothing is selected."""
         sel = self.selected
         if isinstance(sel, RasterImage):
@@ -92,7 +92,7 @@ class Document(QObject):
                 return imgs[0]
         return None
 
-    def object_at(self, x: float, y: float, tol: float, kinds: Sequence[str] = ()) -> Optional[SceneObject]:
+    def object_at(self, x: float, y: float, tol: float, kinds: Sequence[str] = ()) -> SceneObject | None:
         """The topmost object at (x, y)."""
         for obj in reversed(self.objects):
             if kinds and obj.kind not in kinds:
@@ -150,7 +150,7 @@ class Document(QObject):
         self.object_updated.emit(obj.oid)
 
     # --------------------------------------------------------- scene editing --
-    def reset(self, objects: List[SceneObject], file_path: Optional[str] = None) -> None:
+    def reset(self, objects: list[SceneObject], file_path: str | None = None) -> None:
         """Replace the scene (new or opened file) and clear the history."""
         self.objects = list(objects)
         self.selected_oid = None
@@ -164,7 +164,7 @@ class Document(QObject):
         self.changed.emit()
         self.selection_changed.emit()
 
-    def add_objects(self, objs: List[SceneObject], label: str) -> None:
+    def add_objects(self, objs: list[SceneObject], label: str) -> None:
         if not objs:
             return
         with self.change(label):
@@ -210,12 +210,12 @@ class Document(QObject):
 
     def rename(self, oid: str, name: str) -> None:
         obj = self.find(oid)
-        if obj is None or obj.name == name:
+        if obj is None or obj.name == name:  # type: ignore[attr-defined]
             return
         with self.change(tr("Rename: {name}", name=name)):
-            obj.name = name
+            obj.name = name  # type: ignore[attr-defined]
 
-    def select(self, oid: Optional[str]) -> None:
+    def select(self, oid: str | None) -> None:
         """Change the selection (not recorded in the history)."""
         if oid != self.selected_oid:
             self.selected_oid = oid

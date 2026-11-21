@@ -6,7 +6,7 @@ so that they line up in a regular grid.
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
@@ -47,7 +47,7 @@ def action_tooltip(action: QAction, fallback: str = "") -> str:
 class ActionButton(QToolButton):
     """Button with its own text whose enabled state follows a QAction."""
 
-    _action: Optional[QAction] = None
+    _action: QAction | None = None
 
     def bind_action(self, action: QAction):
         self._action = action
@@ -65,7 +65,7 @@ class ActionButton(QToolButton):
 class Tile(ActionButton):
     """Ribbon tile."""
 
-    def __init__(self, text: str, tooltip: str = "", accent: Optional[int] = None, parent=None):
+    def __init__(self, text: str, tooltip: str = "", accent: int | None = None, parent=None):
         super().__init__(parent)
         self.setObjectName("tile")
         self.setText(wrap_label(text))
@@ -139,14 +139,14 @@ class Ribbon(QTabWidget):
         return page
 
     def add_tile(self, group: RibbonGroup, text: str, slot: Callable, tooltip: str = "",
-                 accent: Optional[int] = None) -> Tile:
+                 accent: int | None = None) -> Tile:
         tile = Tile(text, tooltip, accent)
         tile.clicked.connect(lambda _=False: slot())
         group.row.addWidget(tile)
         self.tiles.append(tile)
         return tile
 
-    def add_action_tile(self, group: RibbonGroup, action: QAction, text: str, accent: Optional[int] = None) -> Tile:
+    def add_action_tile(self, group: RibbonGroup, action: QAction, text: str, accent: int | None = None) -> Tile:
         """Add a tile that triggers ``action`` and follows its enabled state."""
         tile = Tile(text, action_tooltip(action, text), accent)
         tile.bind_action(action)

@@ -4,8 +4,9 @@ The parameter dialog is generated from these declarations: integers become
 spin boxes, choices become combo boxes, matrices become text fields, and so on.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import Any
 
 from ..i18n import tr
 
@@ -67,7 +68,7 @@ class BoolParam(Param):
 class ChoiceParam(Param):
     """One value from ``choices``, a list of ``(value, label)`` pairs."""
 
-    choices: Sequence[Tuple[Any, str]] = field(default_factory=list)
+    choices: Sequence[tuple[Any, str]] = field(default_factory=list)
 
     def __post_init__(self):
         if self.default is None and self.choices:
@@ -88,10 +89,10 @@ class MatrixParam(Param):
 
     default: str = "0 1 0\n1 1 1\n0 1 0"
     integer: bool = False
-    allowed: Optional[Sequence[float]] = None  # e.g. (0, 1, -1) for a structuring element
+    allowed: Sequence[float] | None = None  # e.g. (0, 1, -1) for a structuring element
     odd_size: bool = False
 
-    def validate(self, value) -> List[List[float]]:
+    def validate(self, value) -> list[list[float]]:
         text = str(value).strip()
         if not text:
             raise ValueError(tr("{label}: the matrix is empty.", label=tr(self.label)))
@@ -104,7 +105,7 @@ class MatrixParam(Param):
                 row = [int(v) if self.integer else float(v) for v in items]
             except ValueError:
                 msg = "{label}: only integers are allowed." if self.integer else "{label}: only numbers are allowed."
-                raise ValueError(tr(msg, label=tr(self.label)))
+                raise ValueError(tr(msg, label=tr(self.label))) from None
             rows.append(row)
         if not rows:
             raise ValueError(tr("{label}: the matrix is empty.", label=tr(self.label)))
