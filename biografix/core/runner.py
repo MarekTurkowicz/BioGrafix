@@ -20,7 +20,7 @@ from PySide6.QtCore import QObject, QThread, Signal
 from ..i18n import tr
 from .document import Document
 from .imaging import bounding_box_of_mask, normalize_result, paste_region, paste_region_where_selected, to_rgb
-from .registry import TARGET_SHAPE, Operation, Report
+from .registry import MIN_SCENE_IMAGES, TARGET_SCENE, TARGET_SHAPE, ImageResults, Operation, Report
 
 
 class _Worker(QThread):
@@ -66,9 +66,15 @@ class OperationRunner(QObject):
         return self._worker is not None
 
     @property
+    def busy_oids(self) -> list[str]:
+        """Ids of the images being processed (several for a scene operation)."""
+        return list(self._job["oids"]) if self._job and self._worker is not None else []
+
+    @property
     def busy_oid(self) -> str | None:
-        """Id of the image being processed, or None."""
-        return self._job["oid"] if self._job and self._worker is not None else None
+        """Id of the (first) image being processed, or None."""
+        oids = self.busy_oids
+        return oids[0] if oids else None
 
     @property
     def busy_label(self) -> str:
@@ -104,6 +110,8 @@ class OperationRunner(QObject):
     def run(self, op: Operation, values: dict[str, Any]) -> None:
         if op.target == TARGET_SHAPE:
             self._run_on_shape(op, values)
+        elif op.target == TARGET_SCENE:
+            self._run_on_scene(op, values)
         else:
             self._run_on_image(op, values)
 
@@ -138,12 +146,34 @@ class OperationRunner(QObject):
         region = np.array(region, copy=True)  # the function may modify its own copy
         suffix = " " + tr("[selection]") if selection_in_roi is not None else " " + tr("[region]") if roi else ""
         label = op.history_label(values) + suffix
-        self._job = dict(op=op, label=label, oid=image.oid, source_pixels=image.pixels,
+        self._job = dict(op=op, label=label, oids=[image.oid], source_pixels=image.pixels,
                          roi=roi, selection_in_roi=selection_in_roi, region_shape=region.shape)
 
         def compute():
             return op.func(region, **values)
 
+        self._start(label, compute)
+
+    def _run_on_scene(self, op: Operation, values):
+        """Run a comparison on every image in the scene (whole images, regions are ignored)."""
+        if self.busy:
+            raise OperationError(tr("Please wait – the previous operation is still running."))
+        images = self.doc.images()
+        if len(images) < MIN_SCENE_IMAGES:
+            raise OperationError(tr("Load at least {n} images to compare (File → Open images…).", n=MIN_SCENE_IMAGES))
+        arrays = [np.array(to_rgb(img.pixels), copy=True) for img in images]
+        names = [img.display_name for img in images]
+        label = op.history_label(values)
+        self._job = dict(op=op, label=label, oids=[img.oid for img in images],
+                         source_pixels=[img.pixels for img in images])
+
+        def compute():
+            return op.func(arrays, names, **values)
+
+        self._start(label, compute)
+
+    def _start(self, label: str, compute: Callable[[], Any]) -> None:
+        """Run ``compute`` in a worker thread (or synchronously in tests) and apply its result."""
         if self.synchronous:
             self.started.emit(label)
             t0 = time.perf_counter()
@@ -166,8 +196,11 @@ class OperationRunner(QObject):
     def _on_done(self, result, seconds):
         job, self._job, self._worker = self._job, None, None
         try:
-            self._apply_image_result(job["op"], job["label"], job["oid"], job["source_pixels"],
-                                     job["roi"], job["region_shape"], result, job["selection_in_roi"])
+            if job["op"].target == TARGET_SCENE:
+                self._apply_scene_result(job["op"], job["label"], job["oids"], job["source_pixels"], result)
+            else:
+                self._apply_image_result(job["op"], job["label"], job["oids"][0], job["source_pixels"],
+                                         job["roi"], job["region_shape"], result, job["selection_in_roi"])
         except Exception as e:
             self.failed.emit(job["label"], tr(str(e)))
             return
@@ -199,6 +232,29 @@ class OperationRunner(QObject):
             with self.doc.change(label):
                 image.set_pixels(new_pixels)
 
+        self._emit_side_results(result, op)
+
+    def _apply_scene_result(self, op, label, oids, source_pixels, result):
+        """Replace the pixels of every image the scene operation changed, as one undo step."""
+        changes = []
+        for item in _as_list(result):
+            if not isinstance(item, ImageResults):
+                continue
+            if len(item.pixels) != len(oids):
+                raise OperationError(tr("The operation returned a result for a different number of images."))
+            for oid, source, arr in zip(oids, source_pixels, item.pixels, strict=True):
+                if arr is None:
+                    continue
+                image = self.doc.find(oid)
+                if image is None:
+                    raise OperationError(tr("The image was deleted during processing – result discarded."))
+                if image.pixels is not source:
+                    raise OperationError(tr("The image changed during processing – result discarded."))
+                changes.append((image, normalize_result(arr)))
+        if changes:
+            with self.doc.change(label):
+                for image, arr in changes:
+                    image.set_pixels(arr)
         self._emit_side_results(result, op)
 
     def _emit_side_results(self, result, op):

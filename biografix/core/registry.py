@@ -13,6 +13,10 @@ An image operation receives a (H, W, 3) uint8 RGB array and returns one of:
 - ``None``              – nothing changes.
 
 A list or tuple may combine several of these.
+
+A scene operation (``target=TARGET_SCENE``) receives every image in the scene,
+``f(images, names, **values)``, and may return :class:`ImageResults` with the new
+pixels of each image (applied as one undo step) together with reports and figures.
 """
 
 from __future__ import annotations
@@ -34,6 +38,7 @@ CATEGORY_ORDER = [
     "Morphology",
     "Segmentation",
     "Skeletonization",
+    "Feature extraction",
     "Analysis",
     "Geometry",
 ]
@@ -41,6 +46,8 @@ CATEGORY_ORDER = [
 TARGET_IMAGE = "image"          # operates on the selected image
 TARGET_SHAPE = "shape"          # operates on the selected vector shape
 TARGET_SELECTION = "selection"  # changes the magic-wand selection: f(mask, image, **values) -> mask
+TARGET_SCENE = "scene"          # compares all images in the scene: f(images, names, **values)
+MIN_SCENE_IMAGES = 2            # a scene operation compares at least two images
 
 
 @dataclass
@@ -49,6 +56,13 @@ class Report:
 
     text: str
     title: str = ""
+
+
+@dataclass
+class ImageResults:
+    """New pixels for each image passed to a scene operation, in the same order; None leaves an image unchanged."""
+
+    pixels: list[Any]
 
 
 @dataclass

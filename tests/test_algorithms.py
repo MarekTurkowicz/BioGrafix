@@ -6,7 +6,7 @@ from collections import deque
 
 import numpy as np
 
-from biografix.algorithms import geometry, segmentation, skeletonization, thresholding
+from biografix.algorithms import geometry, minutiae, segmentation, skeletonization, thresholding
 from biografix.algorithms.color_models import cmyk_to_rgb, rgb_to_cmyk
 from biografix.algorithms.skeletonization import k3m, kmm
 from biografix.core.imaging import array_to_pixels, paste_region, paste_region_where_selected, pixels_to_array, to_rgb
@@ -273,6 +273,64 @@ class TestSkeletonization(unittest.TestCase):
                 self.assertLess(time.perf_counter() - started, 1.0)
                 blocks_2x2 = skeleton[:-1, :-1] & skeleton[1:, :-1] & skeleton[:-1, 1:] & skeleton[1:, 1:]
                 self.assertLessEqual(int(blocks_2x2.sum()), 2)  # essentially one pixel wide
+
+
+def skeleton_from(rows):
+    """Boolean skeleton from strings, '#' = ridge pixel."""
+    return np.array([[c == "#" for c in row] for row in rows])
+
+
+class TestMinutiae(unittest.TestCase):
+    def test_crossing_number_of_simple_shapes(self):
+        cn = minutiae.crossing_numbers(skeleton_from([
+            ".......",
+            ".#####.",   # line: ends CN = 1, middle CN = 2
+            ".......",
+        ]))
+        self.assertEqual(cn[1].tolist(), [2, 1, 2, 2, 2, 1, 2])  # background reported as 2 (never a minutia)
+        t_shape = minutiae.crossing_numbers(skeleton_from([
+            ".....",
+            ".###.",
+            "..#..",
+            "..#..",
+            ".....",
+        ]))
+        self.assertEqual(t_shape[1, 2], 3)  # bifurcation
+        plus = minutiae.crossing_numbers(skeleton_from([".#.", "###", ".#."]))
+        self.assertEqual(plus[1, 1], 4)     # crossing
+        self.assertEqual(minutiae.crossing_numbers(skeleton_from(["...", ".#.", "..."]))[1, 1], 0)
+
+    def test_minutia_types(self):
+        self.assertIsNone(minutiae.minutia_type(2))
+        self.assertEqual(minutiae.minutia_type(0), minutiae.MinutiaType.ISOLATED_POINT)
+        self.assertEqual(minutiae.minutia_type(1), minutiae.MinutiaType.ENDING)
+        self.assertEqual(minutiae.minutia_type(3), minutiae.MinutiaType.BIFURCATION)
+        self.assertEqual(minutiae.minutia_type(4), minutiae.MinutiaType.CROSSING)
+        found = minutiae.find_minutiae(skeleton_from([".......", ".#####.", "......."]))
+        self.assertEqual([(m.y, m.x, m.type) for m in found],
+                         [(1, 1, minutiae.MinutiaType.ENDING), (1, 5, minutiae.MinutiaType.ENDING)])
+
+    def test_fill_holes(self):
+        ring = skeleton_from(["#####", "#...#", "#.#.#", "#...#", "#####"])
+        self.assertTrue(minutiae.fill_holes(ring).all())
+        open_ring = skeleton_from(["#####", "#...#", "#....", "#...#", "#####"])  # gap to the outside
+        self.assertTrue(np.array_equal(minutiae.fill_holes(open_ring), open_ring))
+
+    def test_border_minutiae_are_removed(self):
+        area = np.zeros((10, 10), bool)
+        area[3:7, 3:7] = True
+        inner = minutiae.Minutia(5, 5, minutiae.MinutiaType.ENDING, 1)
+        edge = minutiae.Minutia(0, 9, minutiae.MinutiaType.ENDING, 1)
+        self.assertEqual(minutiae.remove_border_minutiae([inner, edge], area), ([inner], [edge]))
+
+    def test_markers_use_the_type_colour(self):
+        image = np.full((20, 20, 3), 255, np.uint8)
+        ending = minutiae.Minutia(10, 10, minutiae.MinutiaType.ENDING, 1)
+        removed = minutiae.Minutia(3, 3, minutiae.MinutiaType.BIFURCATION, 3)
+        out = minutiae.draw_minutiae(image, [ending], [removed], radius=2)
+        self.assertEqual(tuple(out[10, 12]), minutiae.MINUTIA_COLOURS[minutiae.MinutiaType.ENDING])
+        self.assertEqual(tuple(out[3, 5]), minutiae.REMOVED_COLOUR)
+        self.assertEqual(tuple(image[10, 12]), (255, 255, 255))  # the input is not modified
 
 
 class TestSceneFile(unittest.TestCase):
